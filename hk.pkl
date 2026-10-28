@@ -1,0 +1,14 @@
+amends "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Config.pkl"
+steps {
+  ["ruff"] {
+    check = "uv run ruff check src tests/native typings"
+    fix = "uv run ruff check --fix src tests/native typings"
+  }
+  ["format"] {
+    check = "uv run ruff format --check src tests/native typings"
+    fix = "uv run ruff format src tests/native typings"
+  }
+  ["ty"] { check = "uv run ty check" }
+  ["pyright"] { check = "uv run pyright" }
+  ["lock"] { check = "uv lock --check" }
+}

@@ -1,70 +1,62 @@
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra -q --color=yes --cov=fhirpathpy --cov-report=xml"
-testpaths = ["tests"]
-log_cli = true
-log_cli_level = "INFO"
-python_functions = "*_test"
-
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
 
 [project]
-name = "fhirpathpy"
-description = "FHIRPath implementation in Python"
+name = "fhirpath-pydantic"
+version = "0.1.0"
+description = "Native typed FHIRPath queries for Pydantic FHIR resources"
 readme = "README.md"
-license = { file = "LICENSE.md" }
-keywords = ["fhir", "fhirpath"]
-dynamic = ["version"]
-authors = [{ name = "beda.software", email = "fhirpath@beda.software" }]
-dependencies = ["antlr4-python3-runtime~=4.10", "python-dateutil~=2.8"]
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Environment :: Web Environment",
-    "Intended Audience :: Developers",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Topic :: Internet :: WWW/HTTP",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Typing :: Typed",
-]
-requires-python = ">=3.10"
+license = "MIT"
+requires-python = ">=3.14,<3.15"
+dependencies = ["antlr4-python3-runtime>=4.13,<4.14", "fhir.resources>=8.3,<9", "pydantic>=2.12,<3"]
 
-[project.optional-dependencies]
-test = ["pytest==7.1.1", "pyyaml==5.4", "pydantic==2.13.1"]
+[dependency-groups]
+dev = ["pytest>=9,<10", "pytest-cov>=7,<8", "fhirpathpy==2.2.4", "pyyaml>=6,<7", "ruff>=0.14", "ty>=0.0.89", "pyright>=1.1.400"]
 
-[project.urls]
-Homepage = "https://github.com/beda-software/fhirpath-py"
-Documentation = "https://github.com/beda-software/fhirpath-py#readme"
-Source = "https://github.com/beda-software/fhirpath-py.git"
-Changelog = "https://github.com/beda-software/fhirpath-py/blob/master/CHANGELOG.md"
+[tool.hatch.build.targets.wheel]
+packages = ["src/fhirpath_pydantic"]
 
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests/native", "typings", "README.md", "LICENSE.md", "pyproject.toml", "mise.toml", "hk.pkl", "uv.lock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/native"]
+python_functions = ["test_*"]
+addopts = "-ra --confcutdir=tests/native"
+
+[tool.ty.environment]
+python-version = "3.14"
+extra-paths = ["typings"]
+[tool.ty.src]
+include = ["src", "tests/native"]
+exclude = ["src/fhirpath_pydantic/_grammar/*.py"]
+[tool.ty.analysis]
+respect-type-ignore-comments = false
+[tool.ty.rules]
+all = "error"
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+include = ["src/fhirpath_pydantic", "tests/native"]
+exclude = ["src/fhirpath_pydantic/_grammar"]
+stubPath = "typings"
+enableTypeIgnoreComments = false
+reportImplicitOverride = true
 
 [tool.ruff]
-target-version = "py310"
-line-length = 100
-include = ["fhirpathpy/**/*.py", "tests/**/*.py"]
-exclude = ["fhirpathpy/parser/**/*.py"]
-
+target-version = "py314"
+line-length = 120
+src = ["src"]
+exclude = ["src/fhirpath_pydantic/_grammar/*.py", "fhirpathpy", "tests/upstream", "tests/test_*", "tests/conftest.py"]
 [tool.ruff.lint]
-select = ["B", "F", "I", "E", "UP", "N", "PL", "PERF"]
-# N8* is not relevant for us because of legacy code
-ignore = ["E501", "N801", "N802", "N805", "N815", "N816", "N803", "N806", "PLR0911", "PLR0912", "PLR0915", "PLR2004", "PLW0211"]
-unfixable = ["F401"]
+select = ["E", "F", "I", "UP", "ANN", "B", "C4", "SIM", "RET", "PGH", "TID", "D100", "D101", "D102", "D103"]
+ignore = ["E501"]
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.Any" = {msg = "Validate the boundary and use concrete types."}
+"typing.cast" = {msg = "Narrow or validate the value instead."}
 
-[tool.mypy]
-python_version = "3.10"
-ignore_missing_imports = true
-plugins = ["pydantic.mypy"]
-
-
-[tool.autohooks]
-mode = "pipenv"
-pre-commit = ["autohooks.plugins.ruff.check", "autohooks.plugins.ruff.format"]
+[tool.coverage.run]
+source = ["fhirpath_pydantic"]
+omit = ["*/_grammar/*"]

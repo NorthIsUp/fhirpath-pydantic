@@ -1,138 +1,97 @@
-fhirpath.py
-===========
+# fhirpath-pydantic
 
-[![Build Status](https://github.com/beda-software/fhirpath-py/actions/workflows/build.yaml/badge.svg)](https://github.com/beda-software/fhirpath-py/actions)
-[![codecov](https://codecov.io/gh/beda-software/fhirpath-py/branch/master/graph/badge.svg)](https://codecov.io/gh/beda-software/fhirpath-py)
-[![pypi](https://img.shields.io/pypi/v/fhirpathpy.svg)](https://pypi.org/project/fhirpathpy/)
-[![Supported Python version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
+Native FHIRPath queries for `fhir.resources` 8.3, Pydantic v2, and Python 3.14.
+Derived from [fhirpathpy 2.2.4](https://github.com/beda-software/fhirpath-py), retaining
+its MIT-licensed ANTLR grammar and adding a fully typed native runtime.
 
-[FHIRPath](https://www.hl7.org/fhir/fhirpath.html) implementation in Python
+```python
+from fhir.resources.patient import Patient
+from fhirpath_pydantic import compile, path, var
 
-Parser was generated with [antlr4](https://github.com/antlr/antlr4)
+patient = Patient.model_validate({
+    "name": [{"use": "official", "given": ["example"]}],
+})
+query = compile(
+    "Patient.name.where(use = %use).given.first()",
+    output_type=str,
+)
+assert query(patient, {"use": "official"}) == ["example"]
 
-# Getting started
-## Install
-`pip install fhirpathpy`
-
-## Usage
-```Python
-from fhirpathpy import evaluate
-
-patient = {
-  "resourceType": "Patient",
-  "id": "example",
-  "name": [
-    {
-      "use": "official",
-      "given": [
-        "Peter",
-        "James"
-      ],
-      "family": "Chalmers"
-    },
-    {
-      "use": "usual",
-      "given": [
-        "Jim"
-      ]
-    },
-    {
-      "use": "maiden",
-      "given": [
-        "Peter",
-        "James"
-      ],
-      "family": "Windsor",
-      "period": {
-        "end": "2002"
-      }
-    }
-  ]
-}
-
-# Evaluating FHIRPath
-result = evaluate(patient, "Patient.name.where(use='usual').given.first()", {})
-# result: `['Jim']`
+# Same operation without creating, escaping, or parsing a query string:
+expression = (
+    path("Patient", "name")
+    .where(path("use").eq(var("use")))
+    .field("given")
+    .first()
+)
+assert compile(expression, output_type=str)(patient, {"use": "official"}) == ["example"]
 ```
 
-## evaluate
-Evaluates the "path" FHIRPath expression on the given resource, using data from "context" for variables mentioned in the "path" expression.
+`evaluate(resource, expression, context=None)` returns a collection. `compile`
+creates a reusable query with `.first()` and cardinality-checking `.one()` helpers.
+`compile_as_array` and `compile_as_first` additionally check the input model class.
+`literal(value)` embeds a native constant in a fluent expression; `var(name)` binds
+runtime data. Neither constructs or interpolates FHIRPath text.
 
-**Parameters**
+Evaluation reads Pydantic fields directly. FHIR aliases (`Encounter.class`), choice
+groups (`Observation.value`), and primitive extensions come from model metadata.
+Selected models retain identity; dates, times, Decimals and bytes retain their
+Python types. No `model_dump()`, JSON round trip, input mutation, or external FHIR
+model table is used. R5 and R4B share the same reader. Cached plans contain syntax,
+field metadata and validators; per-call variables stay out of caches.
 
-resource (dict|list): FHIR resource, bundle as js object or array of resources This resource will be modified by this function to add type information.
+## Pydantic invariants
 
-path (string): fhirpath expression, sample 'Patient.name.given'
-
-context (dict): a hash of variable name/value pairs.
-
-model (dict): The "model" data object specific to a domain, e.g. R4. See Using data models documentation below.
-
-options (dict) - Custom options.
-
-options.userInvocationTable - a user invocation table used to replace any existing functions or define new ones. See User-defined functions documentation below.
-
-## compile
-Returns a function that takes a resource and an optional context hash (see "evaluate"), and returns the result of evaluating the given FHIRPath expression on that resource.  The advantage of this function over "evaluate" is that if you have multiple resources, the given FHIRPath expression will only be parsed once
-
-**Parameters**
-
-path (string) - the FHIRPath expression to be parsed.
-
-model (dict) - The "model" data object specific to a domain, e.g. R4. See Using data models documentation below.
-
-options (dict) - Custom options
-
-options.userInvocationTable - a user invocation table used to replace any existing functions or define new ones. See User-defined functions documentation below.
-
-## Using data models
-
-The fhirpathpy library comes with pre-defined data models for FHIR versions DSTU2, STU3, R4, and R5. These models can be used within your project.
-
-Example:
 ```python
-from fhirpathpy.models import models
+from typing import Annotated
+from pydantic import BaseModel
+from fhirpath_pydantic import FHIRPathConstraint
 
-
-r4_model = models["r4"]
-
-patient = {
-  "resourceType": "Patient",
-  "deceasedBoolean": false,
-}
-
-result = evaluate(patient, "Patient.deceased", {}, r4_model)
-
-# result: `[False]`
-```
-
-## User-defined functions
-
-The FHIRPath specification includes a set of built-in functions. However, if you need to extend the functionality by adding custom logic, you can define your own functions by providing a table of user-defined functions.
-
-Example:
-```python
-user_invocation_table = {
-    "pow": {
-        "fn": lambda inputs, exp=2: [i**exp for i in inputs],
-        "arity": {0: [], 1: ["Integer"]},
-    }
-}
-
-result = evaluate(
-    {"a": [5, 6, 7]},
-    "a.pow()",
-    options={"userInvocationTable": user_invocation_table},
+active = FHIRPathConstraint(
+    expression="active = true",
+    message="Resource must be active",
 )
 
-# result: `[25, 36, 49]`
+class Envelope(BaseModel):
+    resource: Annotated[Patient, active.after_validator()]
 ```
 
-It works similarly to [fhirpath.js](https://github.com/HL7/fhirpath.js/tree/master?tab=readme-ov-file#user-defined-functions)
+Constraints require exactly `[True]`. Result adapters use strict Pydantic validation,
+so a query declared as `str` cannot silently convert a Boolean or number. For
+custom result schemas, `CompiledQuery(node=..., adapter=TypeAdapter[...](...))`
+accepts an already-built adapter, including an `Annotated` type with validators.
 
+## Supported scope
+
+Version 0.1 implements native navigation, aliases, choices, primitive extensions,
+variables, indexing, filtering, projection, repetition, aggregation, collection
+operators, three-valued Boolean operators, numeric and string functions, native
+scalar conversions, and full-precision temporal literals. Unsupported functions
+raise `UnsupportedFeatureError`; there is no serialization fallback.
+
+This is **not a drop-in implementation of every fhirpathpy feature**. UCUM quantity
+literals/conversion, partial-precision temporal arithmetic/comparison, `resolve()`,
+`type()` metadata, and user invocation tables remain unsupported. Primitive subtype
+checks currently use Python representations, so distinct FHIR string-derived types
+are not distinguished. Raw dictionaries support ordinary fields; native choice
+resolution requires FHIR models. Use R4B or R5 models for clinical resources.
+
+The original `fhirpathpy/` source and original tests remain in this fork for
+provenance. They are not shipped in the new wheel or included in its strict type
+checks. Only the generated ANTLR implementation is excluded from type/lint checks
+within `src`; its handwritten interface stubs are checked.
 
 ## Development
 
-To activate git pre-commit hook: `autohooks activate`
+```sh
+mise run sync
+mise run check
+mise run benchmark
+mise run build
+```
 
-To run tests: `pytest`
+`hk check --all` enforces Ruff, formatting, strict Pyright, `ty` with every rule set
+to error, and lock freshness. Handwritten runtime and native tests contain no `Any`,
+casts, or type suppression comments. The benchmark compares compiled native queries
+against compiled fhirpathpy plus `model_dump(by_alias=True, exclude_none=True)`;
+it reports timings without making hardware-dependent pass/fail claims.

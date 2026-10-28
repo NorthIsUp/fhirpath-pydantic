@@ -1,0 +1,15 @@
+[tools]
+hk = "2.8.1"
+
+[tasks.sync]
+run = "uv sync --locked --group dev"
+[tasks.test]
+run = "uv run pytest --confcutdir=tests/native"
+[tasks.lint]
+run = "hk check --all"
+[tasks.check]
+depends = ["test", "lint"]
+[tasks.build]
+run = "uv build"
+[tasks.benchmark]
+run = "uv run python tests/native/benchmark.py"

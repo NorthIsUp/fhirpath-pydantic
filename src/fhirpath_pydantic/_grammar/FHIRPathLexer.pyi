@@ -1,0 +1,3 @@
+from antlr4 import Lexer
+
+class FHIRPathLexer(Lexer): ...
