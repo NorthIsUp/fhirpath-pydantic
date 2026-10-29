@@ -9,11 +9,16 @@ from pydantic import BaseModel
 
 from fhirpath_pydantic.native import Item, items, resource_type
 from fhirpath_pydantic.operators import integer, number, one, string
+from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
 def is_type(value: Value, name: str) -> bool:
     """Test FHIR or System types using native Python and FHIR model types."""
+    if isinstance(value, QuantityValue):
+        return name in {"Quantity", "System.Quantity"}
+    if QuantityValue.is_quantity(value) and name == "System.Quantity":
+        return False
     name = name.removeprefix("FHIR.").removeprefix("System.")
     match name:
         case "Boolean" | "boolean":
@@ -49,6 +54,8 @@ def convert(name: str, focus: list[Item]) -> list[Item]:
         match target:
             case "String":
                 match value:
+                    case QuantityValue():
+                        result = str(value)
                     case bool():
                         result = "true" if value else "false"
                     case date() | time():

@@ -66,15 +66,22 @@ accepts an already-built adapter, including an `Annotated` type with validators.
 Version 0.1 implements native navigation, aliases, choices, primitive extensions,
 variables, indexing, filtering, projection, repetition, aggregation, collection
 operators, three-valued Boolean operators, numeric and string functions, native
-scalar conversions, and full-precision temporal literals. Unsupported functions
-raise `UnsupportedFeatureError`; there is no serialization fallback.
+scalar conversions, typed quantity literals/conversion/arithmetic, and
+full-precision temporal literals. Unsupported functions raise `UnsupportedFeatureError`; there is no serialization fallback.
 
-This is **not a drop-in implementation of every fhirpathpy feature**. UCUM quantity
-literals/conversion, partial-precision temporal arithmetic/comparison, `resolve()`,
+This is **not a drop-in implementation of every fhirpathpy feature**.
+Partial-precision temporal arithmetic/comparison, `resolve()`,
 `type()` metadata, and user invocation tables remain unsupported. Primitive subtype
 checks currently use Python representations, so distinct FHIR string-derived types
 are not distinguished. Raw dictionaries support ordinary fields; native choice
 resolution requires FHIR models. Use R4B or R5 models for clinical resources.
+
+Quantity results use the frozen `QuantityValue` Pydantic model. Known conversions
+cover mass, length, volume, time and their products/quotients. Other UCUM codes
+remain opaque and exact-match only; this is not a complete UCUM catalogue. Native
+FHIR quantities require a UCUM system and code for implicit conversion, and a
+comparator cannot silently become an exact value. Calendar durations remain
+separate from definite units; conversion uses Decimal without integer rounding.
 
 The original `fhirpathpy/` source and original tests remain in this fork for
 provenance. They are not shipped in the new wheel or included in its strict type

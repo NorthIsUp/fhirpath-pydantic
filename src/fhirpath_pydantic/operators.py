@@ -6,6 +6,7 @@ from decimal import Decimal
 from pydantic import ConfigDict, RootModel
 
 from fhirpath_pydantic.native import Item, items
+from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
@@ -46,10 +47,13 @@ def string(collection: list[Item]) -> str:
     return value
 
 
-def equal(left: Value, right: Value, *, equivalent: bool = False) -> bool:
+def equal(left: Value, right: Value, *, equivalent: bool = False) -> bool | None:
     """Compare primitives without Python's True-equals-one coercion."""
     if isinstance(left, bool) != isinstance(right, bool):
         return False
+    if QuantityValue.is_quantity(left) or QuantityValue.is_quantity(right):
+        a, b = QuantityValue.operand(left), QuantityValue.operand(right)
+        return a.equals(b, equivalent=equivalent) if a is not None and b is not None else False
     if equivalent and isinstance(left, str) and isinstance(right, str):
         return " ".join(left.split()).casefold() == " ".join(right.split()).casefold()
     if isinstance(left, bool):
@@ -73,9 +77,12 @@ class ScalarValue(RootModel[Value]):
 
     model_config = ConfigDict(frozen=True)
 
-    def compare(self, b: Value) -> int:
+    def compare(self, b: Value) -> int | None:
         """Order compatible native scalar values without coercing Booleans."""
         a = self.root
+        if QuantityValue.is_quantity(a) or QuantityValue.is_quantity(b):
+            left, right = QuantityValue.operand(a), QuantityValue.operand(b)
+            return left.compare(right) if left is not None and right is not None else None
         match a, b:
             case (bool(), _) | (_, bool()):
                 raise FHIRPathError("Boolean values cannot be ordered")
@@ -116,7 +123,7 @@ def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
         equivalent = len(left) == len(right)
         for item in left:
             for index, other in enumerate(remaining):
-                if equal(item.value, other.value, equivalent=True):
+                if equal(item.value, other.value, equivalent=True) is True:
                     remaining.pop(index)
                     break
             else:
@@ -127,8 +134,14 @@ def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
     if not left or not right:
         return items(False) if (operator == "in" and left) or (operator == "contains" and right) else []
     if operator in {"=", "!="}:
-        same = len(left) == len(right) and all(equal(a.value, b.value) for a, b in zip(left, right, strict=False))
-        return items(same if operator == "=" else not same)
+        if len(left) != len(right):
+            return items(operator == "!=")
+        comparisons = [equal(a.value, b.value) for a, b in zip(left, right, strict=True)]
+        if any(value is False for value in comparisons):
+            same: bool | None = False
+        else:
+            same = None if any(value is None for value in comparisons) else True
+        return items(same if operator == "=" else not same if same is not None else None)
     if operator in {"in", "contains"}:
         singleton, collection = (left, right) if operator == "in" else (right, left)
         value = one(singleton)
@@ -136,9 +149,16 @@ def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
     a, b = one(left), one(right)
     if operator in {"<", "<=", ">", ">="}:
         comparison = ScalarValue.model_construct(root=a).compare(b)
+        if comparison is None:
+            return []
         return items({"<": comparison < 0, "<=": comparison <= 0, ">": comparison > 0, ">=": comparison >= 0}[operator])
     if operator == "+" and isinstance(a, str) and isinstance(b, str):
         return items(a + b)
+    if QuantityValue.is_quantity(a) or QuantityValue.is_quantity(b):
+        left_quantity, right_quantity = QuantityValue.operand(a), QuantityValue.operand(b)
+        if left_quantity is None or right_quantity is None:
+            return []
+        return items(left_quantity.arithmetic(operator, right_quantity))
     x, y = number(a), number(b)
     if isinstance(a, int) and isinstance(b, int):
         match operator:

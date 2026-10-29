@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from fhirpath_pydantic.native import Item, children, items, member, values
 from fhirpath_pydantic.operators import binary, boolean, equal, integer, number, one, string, unique
+from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.scalars import convert, is_type, numeric, strings
 from fhirpath_pydantic.syntax import Node
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
@@ -99,6 +100,13 @@ class State(BaseModel):
             return items(matches) if name == "is" else focus if matches else []
         params = [evaluate_node(arg, focus, self) for arg in args]
         match name:
+            case "toQuantity" | "convertsToQuantity":
+                if not focus or params and not params[0]:
+                    return []
+                quantity = QuantityValue.from_value(one(focus))
+                if quantity is not None and params:
+                    quantity = quantity.convert_to(string(params[0]))
+                return items(quantity is not None) if name == "convertsToQuantity" else items(quantity)
             case "empty":
                 return items(not focus)
             case "count":
@@ -232,12 +240,18 @@ class State(BaseModel):
             case "TimeLiteral":
                 return items(time.fromisoformat(node.text[2:]))
             case "QuantityLiteral":
-                raise UnsupportedFeatureError("UCUM quantity literals are not implemented")
+                quantity = QuantityValue.from_text(node.text)
+                if quantity is None:
+                    raise FHIRPathError("Invalid Quantity literal")
+                return items(quantity)
             case "PolarityExpression":
                 result = evaluate_node(node.children[0], focus, self)
                 if not result:
                     return []
                 native = one(result)
+                if QuantityValue.is_quantity(native):
+                    quantity = QuantityValue.operand(native)
+                    return items(quantity.negated() if quantity is not None and node.tokens[0] == "-" else quantity)
                 value = native if isinstance(native, int) and not isinstance(native, bool) else number(native)
                 return items(-value if node.tokens[0] == "-" else value)
             case "IndexerExpression":
@@ -293,6 +307,8 @@ def evaluate_node(node: Node, focus: list[Item], state: State) -> list[Item]:
 
 
 _ARITY: dict[str, tuple[int, int]] = {
+    "toQuantity": (0, 1),
+    "convertsToQuantity": (0, 1),
     **dict.fromkeys(
         (
             "empty",
