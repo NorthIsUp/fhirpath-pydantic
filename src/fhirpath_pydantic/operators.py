@@ -3,6 +3,8 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
+from pydantic import ConfigDict, RootModel
+
 from fhirpath_pydantic.native import Item, items
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
@@ -66,23 +68,30 @@ def unique(collection: list[Item]) -> list[Item]:
     return result
 
 
-def _compare(a: Value, b: Value) -> int:
-    match a, b:
-        case (bool(), _) | (_, bool()):
-            raise FHIRPathError("Boolean values cannot be ordered")
-        case ((int() | float() | Decimal()), (int() | float() | Decimal())):
-            x, y = number(a), number(b)
-            return (x > y) - (x < y)
-        case str(), str():
-            return (a > b) - (a < b)
-        case datetime(), datetime():
-            return (a > b) - (a < b)
-        case date(), date() if not isinstance(a, datetime) and not isinstance(b, datetime):
-            return (a > b) - (a < b)
-        case time(), time():
-            return (a > b) - (a < b)
-        case _:
-            raise FHIRPathError("Cannot order values of incompatible types")
+class ScalarValue(RootModel[Value]):
+    """Typed scalar comparison behavior, independent of collection cardinality."""
+
+    model_config = ConfigDict(frozen=True)
+
+    def compare(self, b: Value) -> int:
+        """Order compatible native scalar values without coercing Booleans."""
+        a = self.root
+        match a, b:
+            case (bool(), _) | (_, bool()):
+                raise FHIRPathError("Boolean values cannot be ordered")
+            case ((int() | float() | Decimal()), (int() | float() | Decimal())):
+                x, y = number(a), number(b)
+                return (x > y) - (x < y)
+            case str(), str():
+                return (a > b) - (a < b)
+            case datetime(), datetime():
+                return (a > b) - (a < b)
+            case date(), date() if not isinstance(a, datetime) and not isinstance(b, datetime):
+                return (a > b) - (a < b)
+            case time(), time():
+                return (a > b) - (a < b)
+            case _:
+                raise FHIRPathError("Cannot order values of incompatible types")
 
 
 def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
@@ -126,7 +135,7 @@ def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
         return items(any(equal(value, other.value) for other in collection))
     a, b = one(left), one(right)
     if operator in {"<", "<=", ">", ">="}:
-        comparison = _compare(a, b)
+        comparison = ScalarValue.model_construct(root=a).compare(b)
         return items({"<": comparison < 0, "<=": comparison <= 0, ">": comparison > 0, ">=": comparison >= 0}[operator])
     if operator == "+" and isinstance(a, str) and isinstance(b, str):
         return items(a + b)

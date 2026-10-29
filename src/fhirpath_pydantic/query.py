@@ -20,6 +20,12 @@ class CompiledQuery[T](BaseModel):
     node: Node
     adapter: TypeAdapter[T]
 
+    @classmethod
+    @lru_cache(maxsize=512)
+    def from_text(cls, expression: str, adapter: TypeAdapter[T]) -> CompiledQuery[T]:
+        """Cache a validated compiled plan without retaining evaluation inputs."""
+        return cls(node=parse(expression), adapter=adapter)
+
     def __call__(self, resource: Value, context: Mapping[str, Value] | None = None) -> list[T]:
         """Evaluate and strictly validate each returned native value."""
         variables: dict[str, Value] = {
@@ -55,16 +61,11 @@ def compile[T](
 ) -> CompiledQuery[T] | CompiledQuery[Value]:
     """Compile syntax once and reuse its Pydantic validator for all evaluations."""
     if isinstance(expression, str) and output_type is None:
-        return _compile_string(expression)
+        return CompiledQuery[Value].from_text(expression, _VALUE_ADAPTER)
     node = parse(expression) if isinstance(expression, str) else expression.node
     if output_type is None:
         return CompiledQuery[Value](node=node, adapter=TypeAdapter[Value](Value))
     return CompiledQuery[T](node=node, adapter=TypeAdapter[T](output_type))
-
-
-@lru_cache(maxsize=512)
-def _compile_string(expression: str) -> CompiledQuery[Value]:
-    return CompiledQuery[Value](node=parse(expression), adapter=_VALUE_ADAPTER)
 
 
 _VALUE_ADAPTER = TypeAdapter[Value](Value)

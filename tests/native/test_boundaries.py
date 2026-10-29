@@ -155,3 +155,9 @@ def test_custom_result_adapter() -> None:
     """A caller may reuse a Pydantic result adapter without changing evaluation."""
     query = CompiledQuery[int](node=literal(1).node, adapter=TypeAdapter[int](int))
     assert query(None) == [1]
+
+
+def test_clock_is_stable_within_one_evaluation() -> None:
+    """Repeated clock functions use one evaluation timestamp, as FHIRPath requires."""
+    assert evaluate(None, "now() = now()") == [True]
+    assert evaluate(None, "timeOfDay() = timeOfDay()") == [True]

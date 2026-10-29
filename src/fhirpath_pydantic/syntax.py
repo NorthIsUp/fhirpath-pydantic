@@ -1,5 +1,6 @@
 """Immutable syntax trees using fhirpathpy's upstream ANTLR grammar."""
 
+import re
 from functools import lru_cache
 from typing import Literal, override
 
@@ -24,6 +25,51 @@ class Node(BaseModel):
     value: Value = None
     source: Literal["grammar", "literal"] = "grammar"
 
+    @classmethod
+    def from_context(cls, context: ParserRuleContext) -> Node:
+        """Build validated syntax directly from the generated grammar's tree."""
+        children: list[Node] = []
+        tokens: list[str] = []
+        for child in context.getChildren():
+            if isinstance(child, TerminalNode):
+                tokens.append(child.getText())
+            else:
+                children.append(cls.from_context(child))
+        return cls(
+            kind=type(context).__name__.removesuffix("Context"),
+            text=context.getText(),
+            tokens=tuple(tokens),
+            children=tuple(children),
+        )
+
+    def string_value(self) -> str:
+        """Decode a FHIRPath literal without Python-specific escape semantics."""
+        escapes = {"n": "\n", "r": "\r", "t": "\t", "f": "\f", "\\": "\\", "'": "'", '"': '"', "`": "`"}
+        return re.sub(
+            r"\\(u[0-9A-Fa-f]{4}|.)",
+            lambda match: chr(int(match[1][1:], 16)) if match[1].startswith("u") else escapes.get(match[1], match[1]),
+            self.text[1:-1],
+        )
+
+    @classmethod
+    @lru_cache(maxsize=512)
+    def parse(cls, expression: str) -> Node:
+        """Reject parser recovery and trailing tokens, caching syntax only."""
+        if not expression.strip():
+            raise FHIRPathError("FHIRPath expression cannot be empty")
+        lexer = FHIRPathLexer(InputStream(expression))
+        errors = _Errors()
+        lexer.removeErrorListeners()
+        lexer.addErrorListener(errors)
+        stream = CommonTokenStream(lexer)
+        parser = FHIRPathParser(stream)
+        parser.removeErrorListeners()
+        parser.addErrorListener(errors)
+        result = cls.from_context(parser.expression())
+        if stream.LA(1) != Token.EOF:
+            raise FHIRPathError("Unexpected trailing input")
+        return result
+
 
 class _Errors(ErrorListener):
     @override
@@ -39,36 +85,6 @@ class _Errors(ErrorListener):
         raise FHIRPathError(f"Invalid FHIRPath at {line}:{column}: {msg}")
 
 
-def _node(context: ParserRuleContext) -> Node:
-    children: list[Node] = []
-    tokens: list[str] = []
-    for child in context.getChildren():
-        if isinstance(child, TerminalNode):
-            tokens.append(child.getText())
-        else:
-            children.append(_node(child))
-    return Node(
-        kind=type(context).__name__.removesuffix("Context"),
-        text=context.getText(),
-        tokens=tuple(tokens),
-        children=tuple(children),
-    )
-
-
-@lru_cache(maxsize=512)
 def parse(expression: str) -> Node:
-    """Reject lexer/parser recovery and trailing tokens, caching syntax only."""
-    if not expression.strip():
-        raise FHIRPathError("FHIRPath expression cannot be empty")
-    lexer = FHIRPathLexer(InputStream(expression))
-    errors = _Errors()
-    lexer.removeErrorListeners()
-    lexer.addErrorListener(errors)
-    stream = CommonTokenStream(lexer)
-    parser = FHIRPathParser(stream)
-    parser.removeErrorListeners()
-    parser.addErrorListener(errors)
-    result = _node(parser.expression())
-    if stream.LA(1) != Token.EOF:
-        raise FHIRPathError("Unexpected trailing input")
-    return result
+    """Parse text through the syntax model's validated constructor."""
+    return Node.parse(expression)

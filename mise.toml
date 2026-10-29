@@ -13,3 +13,9 @@ depends = ["test", "lint"]
 run = "uv build"
 [tasks.benchmark]
 run = "uv run python tests/native/benchmark.py"
+
+[tasks.format]
+run = "hk fix --all -S format"
+[tasks.fix]
+depends = ["format"]
+run = "hk fix --all -S ruff"
