@@ -3,16 +3,16 @@
 from collections.abc import Generator
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import override
+from typing import Annotated, Self, override
 
 import pytest
 from fhir.resources.humanname import HumanName
 from fhir.resources.patient import Patient
-from pydantic import BaseModel, PrivateAttr, TypeAdapter
+from pydantic import BaseModel, PrivateAttr, TypeAdapter, ValidationError, model_validator
 
 from fhirpath_pydantic import CompiledQuery, FHIRPathError, compile, evaluate, literal, path
 from fhirpath_pydantic import query as query_module
-from fhirpath_pydantic.types import Collection, Value
+from fhirpath_pydantic.types import Collection, NativeModel, Value
 
 
 @pytest.mark.parametrize(
@@ -231,3 +231,30 @@ def test_native_value_still_exposes_json_schema() -> None:
 def test_empty_optional_arguments(expression: str, expected: Collection) -> None:
     """Optional empty arguments keep defaults; required empty arguments propagate."""
     assert evaluate(None, expression) == expected
+
+
+class CountedModel(BaseModel):
+    """A model whose validator exposes accidental revalidation of existing instances."""
+
+    _validations: int = PrivateAttr(default=0)
+
+    @property
+    def validations(self) -> int:
+        """Return the number of validation side effects on this instance."""
+        return self._validations
+
+    @model_validator(mode="after")
+    def count_validation(self) -> Self:
+        """Count the validation boundary so repeated validation is observable."""
+        self._validations += 1
+        return self
+
+
+def test_native_constraint_respects_declared_model_class() -> None:
+    """A native-only annotation accepts its exact model hierarchy without rerunning validators."""
+    model = CountedModel()
+    adapter = TypeAdapter[Annotated[CountedModel, NativeModel]](Annotated[CountedModel, NativeModel])
+    assert adapter.validate_python(model) is model
+    assert model.validations == 1
+    with pytest.raises(ValidationError):
+        adapter.validate_python(Patient(active=True))

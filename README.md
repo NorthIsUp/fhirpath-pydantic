@@ -114,6 +114,7 @@ within `src`; its handwritten interface stubs are checked.
 mise run sync
 mise run check
 mise run benchmark
+mise run profile
 mise run build
 ```
 

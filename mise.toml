@@ -25,4 +25,5 @@ run = "uv lock"
 [tasks.parity]
 run = "uv run python tests/native/conformance.py"
 [tasks.profile]
+description = "Profile compiled native traversal on a synthetic Patient"
 run = "uv run python tests/native/profile_runtime.py"

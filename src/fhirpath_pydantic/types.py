@@ -14,9 +14,11 @@ class NativeModel:
     """Pydantic metadata accepts existing models without JSON or collection coercion."""
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, _source: object, _handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
+    def __get_pydantic_core_schema__(cls, source: object, _handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
         """Check native identity directly and serialize through the concrete model."""
-        return core_schema.is_instance_schema(BaseModel)
+        if not isinstance(source, type) or not issubclass(source, BaseModel):
+            raise TypeError("NativeModel metadata requires a Pydantic model class")
+        return core_schema.is_instance_schema(source)
 
     @classmethod
     def __get_pydantic_json_schema__(

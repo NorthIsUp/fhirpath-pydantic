@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 from functools import lru_cache
-from typing import Self
+from typing import Annotated, Self
 
 from fhir.resources.R4B.resource import Resource as R4BResource
 from fhir.resources.resource import Resource as R5Resource
@@ -11,10 +11,10 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
 
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.type_info import TypeInfo
-from fhirpath_pydantic.types import Collection, FHIRPathError, Value
+from fhirpath_pydantic.types import Collection, FHIRPathError, NativeModel, Value
 
 _VALUE = TypeAdapter[Value](Value)
-type ResourceModel = R4BResource | R5Resource
+type ResourceModel = Annotated[R4BResource, NativeModel] | Annotated[R5Resource, NativeModel]
 
 
 class Item(BaseModel):
@@ -90,7 +90,7 @@ class Item(BaseModel):
     ) -> Self:
         """Retain the enclosing resource needed for local reference resolution."""
         scope = value if isinstance(value, (R4BResource, R5Resource)) else owner
-        return cls.model_construct(value=value, extension=extension, owner=scope, declared_type=declared_type)
+        return cls(value=value, extension=extension, owner=scope, declared_type=declared_type)
 
     def resource_type(self) -> str | None:
         """Read the resource or datatype name without serialization."""
@@ -119,7 +119,7 @@ class Item(BaseModel):
             result.extend(
                 NativeCollection.from_field(self.value.get(name), self.value.get(f"_{name}"), owner=self.owner).root
             )
-        return NativeCollection.model_construct(root=result)
+        return NativeCollection(root=result)
 
     def children(self) -> NativeCollection:
         """Return this item's direct FHIR children in model field order."""
@@ -131,7 +131,7 @@ class Item(BaseModel):
             for name in self.value:
                 if name != "resourceType" and not name.startswith("_"):
                     result.extend(self.member(name).root)
-        return NativeCollection.model_construct(root=result)
+        return NativeCollection(root=result)
 
 
 class FieldMetadata(BaseModel):
@@ -204,12 +204,10 @@ class NativeCollection(RootModel[list[Item]]):
     def from_value(cls, value: Value, *, owner: ResourceModel | None = None) -> Self:
         """Normalize a known native value without revalidating model instances."""
         if value is None:
-            return cls.model_construct(root=[])
+            return cls(root=[])
         if isinstance(value, list):
-            return cls.model_construct(
-                root=[Item.from_native(entry, owner=owner) for entry in value if entry is not None]
-            )
-        return cls.model_construct(root=[Item.from_native(value, owner=owner)])
+            return cls(root=[Item.from_native(entry, owner=owner) for entry in value if entry is not None])
+        return cls(root=[Item.from_native(value, owner=owner)])
 
     @classmethod
     def from_field(
@@ -223,7 +221,7 @@ class NativeCollection(RootModel[list[Item]]):
         """Align null primitive-array slots with their extension companions."""
         values = value if isinstance(value, list) else [value]
         companions = companion if isinstance(companion, list) else [companion]
-        return cls.model_construct(
+        return cls(
             root=[
                 Item.from_native(
                     value=values[index] if index < len(values) else None,
@@ -239,11 +237,11 @@ class NativeCollection(RootModel[list[Item]]):
 
     def member(self, name: str) -> Self:
         """Flatten a field selection across every item in this collection."""
-        return self.model_construct(root=[child for item in self.root for child in item.member(name).root])
+        return type(self)(root=[child for item in self.root for child in item.member(name).root])
 
     def children(self) -> Self:
         """Flatten direct-child collections without serializing native values."""
-        return self.model_construct(root=[child for item in self.root for child in item.children().root])
+        return type(self)(root=[child for item in self.root for child in item.children().root])
 
     def values(self) -> Collection:
         """Unwrap results, preserving original models and native scalar types."""
@@ -267,14 +265,14 @@ def resource_type(value: Value) -> str | None:
 
 def member(collection: list[Item], name: str) -> list[Item]:
     """Select members through the native collection model."""
-    return NativeCollection.model_construct(root=collection).member(name).root
+    return NativeCollection(root=collection).member(name).root
 
 
 def children(collection: list[Item]) -> list[Item]:
     """Select children through the native collection model."""
-    return NativeCollection.model_construct(root=collection).children().root
+    return NativeCollection(root=collection).children().root
 
 
 def values(collection: list[Item]) -> Collection:
     """Unwrap values through the native collection model."""
-    return NativeCollection.model_construct(root=collection).values()
+    return NativeCollection(root=collection).values()
