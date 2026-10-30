@@ -28,3 +28,6 @@ Dockerfile text eol=lf
 *.zip binary
 *.tar.gz binary
 *.whl binary
+
+# Preserve the pinned official corpus byte digests, including original line endings.
+tests/hl7/** -text
