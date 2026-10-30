@@ -34,7 +34,7 @@ class AggregateCollection(NativeCollection):
             return NativeCollection.model_construct(root=total)
         best = present[0]
         for item in present[1:]:
-            comparison = ScalarValue.model_construct(root=item.value).compare(best.value)
+            comparison = ScalarValue.model_construct(root=item.system_value()).compare(best.system_value())
             if comparison is None:
                 return NativeCollection.model_construct(root=[])
             if (operation == "min" and comparison < 0) or (operation == "max" and comparison > 0):

@@ -47,7 +47,8 @@ Finite Decimal arithmetic and unit scaling expand local precision as needed;
 nonterminating division remains a Decimal approximation. Quantity negation and
 rendering preserve long magnitudes. Native temporal conversion and fractional
 arithmetic retain submicrosecond precision and do not collapse distinct times
-under a caller's low Decimal precision.
+under a caller's low Decimal precision. Ordered aggregates compare the declared
+FHIR primitive value, so partial native dates cannot silently become strings.
 
 ## Reproducible audit evidence
 

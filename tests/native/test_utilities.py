@@ -4,6 +4,8 @@ from decimal import Decimal
 
 import pytest
 from fhir.resources.observation import Observation
+from fhir.resources.patient import Patient
+from fhir.resources.R4B.patient import Patient as R4BPatient
 
 from fhirpath_pydantic import FHIRPathError, QuantityValue, evaluate
 from fhirpath_pydantic.types import Collection
@@ -92,3 +94,13 @@ def test_native_quantity_aggregate() -> None:
     assert evaluate([first, second], "value.sum()") == [QuantityValue(value=Decimal(1500), unit="g")]
     assert first.valueQuantity is not None
     assert first.valueQuantity.value == Decimal(1)
+
+
+@pytest.mark.parametrize("resource_type", [Patient, R4BPatient])
+@pytest.mark.parametrize("operation", ["min", "max"])
+def test_native_temporal_extrema_use_declared_fhir_type(
+    resource_type: type[Patient] | type[R4BPatient], operation: str
+) -> None:
+    """Partial FHIR dates remain temporal values when an aggregate compares their order."""
+    resources: Collection = [resource_type.model_validate({"birthDate": value}) for value in ("2018", "2018-01")]
+    assert evaluate(resources, f"birthDate.{operation}()") == []
