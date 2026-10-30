@@ -102,8 +102,10 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "antlr4-python3-runtime" },
+    { name = "fhir-core" },
     { name = "fhir-resources" },
     { name = "pydantic" },
+    { name = "pydantic-core" },
 ]
 
 [package.dev-dependencies]
@@ -121,8 +123,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "antlr4-python3-runtime", specifier = ">=4.13,<4.14" },
+    { name = "fhir-core", specifier = ">=1.1,<2" },
     { name = "fhir-resources", specifier = ">=8.3,<9" },
     { name = "pydantic", specifier = ">=2.12,<3" },
+    { name = "pydantic-core", specifier = ">=2.41,<3" },
 ]
 
 [package.metadata.requires-dev]

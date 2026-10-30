@@ -9,7 +9,7 @@ description = "Native typed FHIRPath queries for Pydantic FHIR resources"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.14,<3.15"
-dependencies = ["antlr4-python3-runtime>=4.13,<4.14", "fhir.resources>=8.3,<9", "pydantic>=2.12,<3"]
+dependencies = ["antlr4-python3-runtime>=4.13,<4.14", "fhir.resources>=8.3,<9", "fhir-core>=1.1,<2", "pydantic>=2.12,<3", "pydantic-core>=2.41,<3"]
 
 [dependency-groups]
 dev = ["pytest>=9,<10", "pytest-cov>=7,<8", "fhirpathpy==2.2.4", "pyyaml>=6,<7", "types-PyYAML>=6,<7", "ruff>=0.14", "ty>=0.0.89", "pyright>=1.1.400"]

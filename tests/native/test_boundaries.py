@@ -1,12 +1,14 @@
 """Boundary cases for native scalar conversion, cardinality and traversal."""
 
+from collections.abc import Generator
 from datetime import date, datetime, time
 from decimal import Decimal
+from typing import override
 
 import pytest
 from fhir.resources.humanname import HumanName
 from fhir.resources.patient import Patient
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, PrivateAttr, TypeAdapter
 
 from fhirpath_pydantic import CompiledQuery, FHIRPathError, compile, evaluate, literal, path
 from fhirpath_pydantic import query as query_module
@@ -175,3 +177,42 @@ def test_value_validation_preserves_native_model_identity() -> None:
     """A model branch accepts existing native instances without dictionary coercion."""
     patient = Patient(active=True)
     assert TypeAdapter[Value](Value).validate_python(patient) is patient
+
+
+def test_value_serialization_preserves_native_model_fields() -> None:
+    """Native model validation must retain polymorphic Pydantic serialization."""
+    patient = Patient(active=True)
+    adapter = TypeAdapter[Value](Value)
+    payload = adapter.dump_json(patient)
+    assert b'"active":true' in payload
+
+
+class IterationGuardPatient(Patient):
+    """A model that records unintended collection coercion at validation boundaries."""
+
+    _iterated: bool = PrivateAttr(default=False)
+
+    @property
+    def iterated(self) -> bool:
+        """Report whether a validator tried iterating the resource as a collection."""
+        return self._iterated
+
+    @override
+    def __iter__(self) -> Generator[tuple[str, Value]]:
+        """Reject collection coercion while permitting ordinary native model access."""
+        self._iterated = True
+        raise AssertionError("A native model must not be treated as a collection")
+
+
+def test_native_value_never_attempts_collection_coercion() -> None:
+    """Accepting native instances must not walk their data through rejected union arms."""
+    patient = IterationGuardPatient(active=True)
+    assert TypeAdapter[Value](Value).validate_python(patient) is patient
+    assert evaluate(patient, "active") == [True]
+    assert patient.iterated is False
+
+
+def test_native_value_still_exposes_json_schema() -> None:
+    """The native constraint must support schemas for public callback envelopes."""
+    schema = TypeAdapter[Value](Value).json_schema()
+    assert schema["$defs"]

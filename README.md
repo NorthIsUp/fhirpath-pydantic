@@ -70,9 +70,10 @@ scalar conversions, typed quantity literals/conversion/arithmetic, and
 precision-aware temporal literals and comparisons. Unsupported functions raise `UnsupportedFeatureError`; there is no serialization fallback.
 
 This is **not a drop-in implementation of every fhirpathpy feature**.
-`type()` metadata remains unsupported. Primitive subtype
-checks currently use Python representations, so distinct FHIR string-derived types
-are not distinguished. Raw dictionaries support ordinary fields; native choice
+`type()` returns a typed `TypeInfo` model. Declared FHIR primitive subtypes are
+retained separately from their Python representations: `is()` distinguishes
+`FHIR.code` from `FHIR.string` and System types, while `ofType()` also supports
+implicit System conversion. `getValue()` returns the underlying System value. Raw dictionaries support ordinary fields; native choice
 resolution requires FHIR models. Use R4B or R5 models for clinical resources.
 
 Partial temporal results use the frozen `TemporalValue` Pydantic model; complete

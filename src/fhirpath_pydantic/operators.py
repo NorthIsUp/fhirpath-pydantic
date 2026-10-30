@@ -15,7 +15,7 @@ def one(collection: list[Item]) -> Value:
     """Require at most one value, retaining empty as None."""
     if len(collection) > 1:
         raise FHIRPathError("Expected a singleton collection")
-    return collection[0].value if collection else None
+    return collection[0].system_value() if collection else None
 
 
 def boolean(collection: list[Item]) -> bool | None:
@@ -73,7 +73,7 @@ def unique(collection: list[Item]) -> list[Item]:
     """Retain first occurrences using FHIRPath equality."""
     result: list[Item] = []
     for item in collection:
-        if not any(equal(item.value, previous.value) for previous in result):
+        if not any(equal(item.system_value(), previous.system_value()) for previous in result):
             result.append(item)
     return result
 
@@ -131,7 +131,7 @@ def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
         equivalent = len(left) == len(right)
         for item in left:
             for index, other in enumerate(remaining):
-                if equal(item.value, other.value, equivalent=True) is True:
+                if equal(item.system_value(), other.system_value(), equivalent=True) is True:
                     remaining.pop(index)
                     break
             else:
@@ -144,7 +144,7 @@ def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
     if operator in {"=", "!="}:
         if len(left) != len(right):
             return items(operator == "!=")
-        comparisons = [equal(a.value, b.value) for a, b in zip(left, right, strict=True)]
+        comparisons = [equal(a.system_value(), b.system_value()) for a, b in zip(left, right, strict=True)]
         if any(value is False for value in comparisons):
             same: bool | None = False
         else:
@@ -153,7 +153,7 @@ def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
     if operator in {"in", "contains"}:
         singleton, collection = (left, right) if operator == "in" else (right, left)
         value = one(singleton)
-        return items(any(equal(value, other.value) for other in collection))
+        return items(any(equal(value, other.system_value()) for other in collection))
     a, b = one(left), one(right)
     if operator in {"<", "<=", ">", ">="}:
         comparison = ScalarValue.model_construct(root=a).compare(b)

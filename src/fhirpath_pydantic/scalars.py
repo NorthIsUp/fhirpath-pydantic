@@ -5,46 +5,18 @@ import re
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation, localcontext
 
-from pydantic import BaseModel
-
-from fhirpath_pydantic.native import Item, items, resource_type
+from fhirpath_pydantic.native import Item, items
 from fhirpath_pydantic.operators import integer, number, one, string
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.text import StringValue
+from fhirpath_pydantic.type_info import TypeInfo
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
 def is_type(value: Value, name: str) -> bool:
     """Test FHIR or System types using native Python and FHIR model types."""
-    if isinstance(value, TemporalValue):
-        return name.removeprefix("System.").removeprefix("FHIR.").casefold() == value.kind.casefold()
-    if isinstance(value, QuantityValue):
-        return name in {"Quantity", "System.Quantity"}
-    if QuantityValue.is_quantity(value) and name == "System.Quantity":
-        return False
-    name = name.removeprefix("FHIR.").removeprefix("System.")
-    match name:
-        case "Boolean" | "boolean":
-            return isinstance(value, bool)
-        case "Integer" | "integer" | "positiveInt" | "unsignedInt" | "Integer64" | "integer64":
-            return isinstance(value, int) and not isinstance(value, bool)
-        case "Decimal" | "decimal":
-            return isinstance(value, (float, Decimal))
-        case "String" | "string" | "code" | "uri" | "url" | "id" | "canonical" | "markdown" | "oid" | "uuid":
-            return isinstance(value, str)
-        case "Date" | "date":
-            return isinstance(value, date) and not isinstance(value, datetime)
-        case "DateTime" | "dateTime" | "instant":
-            return isinstance(value, datetime)
-        case "Time" | "time":
-            return isinstance(value, time)
-        case _:
-            return (
-                any(base.__name__ == name for base in type(value).__mro__)
-                if isinstance(value, BaseModel)
-                else resource_type(value) == name
-            )
+    return TypeInfo.from_value(value).matches(name, value)
 
 
 def convert(name: str, focus: list[Item]) -> list[Item]:

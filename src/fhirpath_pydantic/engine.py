@@ -11,7 +11,7 @@ from fhirpath_pydantic.operators import binary, boolean, equal, integer, number,
 from fhirpath_pydantic.options import EvaluationOptions, TraceEvent
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.references import ResolutionScope
-from fhirpath_pydantic.scalars import convert, is_type, numeric, strings
+from fhirpath_pydantic.scalars import convert, numeric, strings
 from fhirpath_pydantic.syntax import Node
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
@@ -87,7 +87,9 @@ class State(BaseModel):
             if name != "repeat":
                 break
             frontier = [
-                item for item in unique(projected) if not any(equal(item.value, previous.value) for previous in seen)
+                item
+                for item in unique(projected)
+                if not any(equal(item.system_value(), previous.system_value()) for previous in seen)
             ]
             if not frontier:
                 break
@@ -125,10 +127,11 @@ class State(BaseModel):
         if name in {"ofType", "is", "as"}:
             target = args[0].text.replace("`", "")
             if name == "ofType":
-                return [item for item in focus if is_type(item.value, target)]
+                return [item for item in focus if item.is_type(target, implicit=True)]
             if not focus:
                 return []
-            matches = is_type(one(focus), target)
+            one(focus)
+            matches = focus[0].is_type(target, implicit=name == "as")
             return items(matches) if name == "is" else focus if matches else []
         if name == "trace":
             label = string(self.evaluate(args[0], list(self.context_focus))) if args else ""
@@ -189,12 +192,15 @@ class State(BaseModel):
                 result = [
                     item
                     for item in focus
-                    if any(equal(item.value, other.value) for other in params[0]) is (name == "intersect")
+                    if any(equal(item.system_value(), other.system_value()) for other in params[0])
+                    is (name == "intersect")
                 ]
                 return unique(result) if name == "intersect" else result
             case "subsetOf" | "supersetOf":
                 subset, superset = (focus, params[0]) if name == "subsetOf" else (params[0], focus)
-                return items(all(any(equal(item.value, other.value) for other in superset) for item in subset))
+                return items(
+                    all(any(equal(item.system_value(), other.system_value()) for other in superset) for item in subset)
+                )
             case "children":
                 return children(focus)
             case "descendants":
@@ -216,12 +222,15 @@ class State(BaseModel):
                     and not isinstance(focus[0].value, (BaseModel, list, dict))
                 )
             case "getValue":
-                one(focus)
-                return [
-                    item
-                    for item in focus
-                    if item.value is not None and not isinstance(item.value, (BaseModel, list, dict))
-                ]
+                value = one(focus)
+                return (
+                    items(value)
+                    if value is not None
+                    and (isinstance(value, TemporalValue) or not isinstance(value, (BaseModel, list, dict)))
+                    else []
+                )
+            case "type":
+                return items([item.type_info() for item in focus])
             case "now":
                 return items(self.timestamp)
             case "today":
@@ -314,7 +323,8 @@ class State(BaseModel):
                 collection = evaluate_node(node.children[0], focus, self)
                 if not collection:
                     return []
-                matches = is_type(one(collection), node.children[1].text.replace("`", ""))
+                one(collection)
+                matches = collection[0].is_type(node.children[1].text.replace("`", ""), implicit=node.tokens[0] == "as")
                 return items(matches) if node.tokens[0] == "is" else collection if matches else []
             case (
                 "UnionExpression"
@@ -348,6 +358,7 @@ def evaluate_node(node: Node, focus: list[Item], state: State) -> list[Item]:
 
 
 _ARITY: dict[str, tuple[int, int]] = {
+    "type": (0, 0),
     "resolve": (0, 0),
     "trace": (0, 2),
     "sum": (0, 0),
