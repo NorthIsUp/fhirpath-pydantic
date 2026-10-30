@@ -94,6 +94,16 @@ class TemporalValue(BaseModel):
         coefficient = Decimal(value.second * 1_000_000 + value.microsecond)
         return DecimalValue.model_validate(coefficient).scaled(Decimal("0.000001"))
 
+    @staticmethod
+    def native_offset(value: datetime | time) -> int | None:
+        """Require lossless whole-minute offsets before building a FHIRPath temporal."""
+        if (offset := value.utcoffset()) is None:
+            return None
+        minutes, remainder = divmod(offset, timedelta(minutes=1))
+        if remainder:
+            raise FHIRPathError("FHIRPath timezone offsets must be whole minutes")
+        return minutes
+
     @classmethod
     def from_value(cls, value: Value) -> Self | None:
         """Use native components without formatting and reparsing Python values."""
@@ -101,7 +111,6 @@ class TemporalValue(BaseModel):
             case TemporalValue():
                 return cls.model_validate(value)
             case datetime():
-                offset = value.utcoffset()
                 return cls(
                     kind="DateTime",
                     year=value.year,
@@ -110,18 +119,17 @@ class TemporalValue(BaseModel):
                     hour=value.hour,
                     minute=value.minute,
                     second=cls.native_second(value),
-                    offset_minutes=int(offset.total_seconds() / 60) if offset is not None else None,
+                    offset_minutes=cls.native_offset(value),
                 )
             case date():
                 return cls(kind="Date", year=value.year, month=value.month, day=value.day)
             case time():
-                offset = value.utcoffset()
                 return cls(
                     kind="Time",
                     hour=value.hour,
                     minute=value.minute,
                     second=cls.native_second(value),
-                    offset_minutes=int(offset.total_seconds() / 60) if offset is not None else None,
+                    offset_minutes=cls.native_offset(value),
                 )
             case _:
                 return None

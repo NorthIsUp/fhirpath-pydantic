@@ -1,12 +1,12 @@
 """Precision-aware temporal behavior on native values and parsed literals."""
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from decimal import Decimal, localcontext
 
 import pytest
 from pydantic import ValidationError
 
-from fhirpath_pydantic import TemporalValue, evaluate, literal
+from fhirpath_pydantic import FHIRPathError, TemporalValue, evaluate, literal
 from fhirpath_pydantic.types import Collection
 
 
@@ -236,3 +236,28 @@ def test_native_time_comparison_ignores_ambient_decimal_precision() -> None:
 def test_fixed_ucum_temporal_arithmetic(expression: str, expected: date | time | str) -> None:
     """Fixed-duration UCUM inputs retain upstream arithmetic on native temporal values."""
     assert evaluate(None, expression) == [expected]
+
+
+@pytest.mark.parametrize("offset", [timedelta(seconds=1), timedelta(seconds=-1), timedelta(hours=1, microseconds=1)])
+@pytest.mark.parametrize("kind", ["DateTime", "Time"])
+def test_native_subminute_offsets_are_rejected(offset: timedelta, kind: str) -> None:
+    """Native offsets must not silently lose seconds at the FHIRPath boundary."""
+    zone = timezone(offset)
+    value = datetime(2024, 1, 1, 12, tzinfo=zone) if kind == "DateTime" else time(12, tzinfo=zone)
+    with pytest.raises(FHIRPathError, match="whole minutes"):
+        TemporalValue.from_value(value)
+    with pytest.raises(FHIRPathError, match="whole minutes"):
+        evaluate(value, "$this = %other", {"other": value.replace(tzinfo=UTC)})
+
+
+@pytest.mark.parametrize("minutes", [-840, -345, 0, 345, 840])
+@pytest.mark.parametrize("kind", ["DateTime", "Time"])
+def test_native_minute_offsets_round_trip(minutes: int, kind: str) -> None:
+    """Every representable offset survives native temporal conversion unchanged."""
+    zone = timezone(timedelta(minutes=minutes))
+    value = datetime(2024, 1, 1, 12, tzinfo=zone) if kind == "DateTime" else time(12, tzinfo=zone)
+    temporal = TemporalValue.from_value(value)
+    assert temporal is not None
+    assert temporal.offset_minutes == minutes
+    assert temporal.native() == value
+    assert evaluate(value, "$this = %other", {"other": value}) == [True]

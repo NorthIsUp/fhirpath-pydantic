@@ -125,7 +125,11 @@ report rather than changing native arithmetic or rewriting the upstream fixtures
 DateTime comparison does not assume a timezone for an offset-free time. When
 only one time has an offset, equality and ordering are indeterminate; equivalence
 is false. Two offset-free times compare as wall clocks, and two known offsets
-normalize together. `join()` propagates empty input, preserves populated empty
+normalize together. Native Python offsets containing seconds or microseconds are
+rejected by temporal operations rather than silently truncated to minutes. Whole-minute
+offsets retain their exact value, including the supported ±14-hour limits.
+`test_native_subminute_offsets_are_rejected` and `test_native_minute_offsets_round_trip`
+exercise both native DateTime and Time inputs. `join()` propagates empty input, preserves populated empty
 strings, and omits extension-only primitive slots from the joined scalar values.
 
 Unanchored calendar quantities use the normative conversion factors (one year
