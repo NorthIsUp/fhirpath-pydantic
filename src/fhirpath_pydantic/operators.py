@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from pydantic import ConfigDict, RootModel
 
-from fhirpath_pydantic.native import Item, items
+from fhirpath_pydantic.native import Item, NativeCollection, items
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
@@ -13,75 +13,71 @@ from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Valu
 
 def one(collection: list[Item]) -> Value:
     """Require at most one value, retaining empty as None."""
-    if len(collection) > 1:
-        raise FHIRPathError("Expected a singleton collection")
-    return collection[0].system_value() if collection else None
+    return Item.singleton(collection)
 
 
 def boolean(collection: list[Item]) -> bool | None:
     """FHIRPath singleton evaluation treats a non-Boolean singleton as true."""
-    if not collection:
-        return None
-    value = one(collection)
-    return value if isinstance(value, bool) else True
+    return Item.boolean(collection)
 
 
 def number(value: Value) -> Decimal:
     """Normalize arithmetic without float rounding or Boolean coercion."""
-    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
-        raise FHIRPathError("Expected a numeric value")
-    return Decimal(str(value))
+    return ScalarValue.model_construct(root=value).number()
 
 
 def integer(collection: list[Item]) -> int:
     """Require an Integer singleton."""
-    value = one(collection)
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise FHIRPathError("Expected an Integer singleton")
-    return value
+    return Item.integer(collection)
 
 
 def string(collection: list[Item]) -> str:
     """Require a String singleton."""
-    if not isinstance(value := one(collection), str):
-        raise FHIRPathError("Expected a String singleton")
-    return value
+    return Item.string(collection)
 
 
 def equal(left: Value, right: Value, *, equivalent: bool = False) -> bool | None:
     """Compare primitives without Python's True-equals-one coercion."""
-    if isinstance(left, bool) != isinstance(right, bool):
-        return False
-    if QuantityValue.is_quantity(left) or QuantityValue.is_quantity(right):
-        a, b = QuantityValue.operand(left), QuantityValue.operand(right)
-        return a.equals(b, equivalent=equivalent) if a is not None and b is not None else False
-    if (a_time := TemporalValue.from_value(left)) is not None:
-        b_time = TemporalValue.from_value(right)
-        return a_time.equals(b_time, equivalent=equivalent) if b_time is not None else False
-    if TemporalValue.from_value(right) is not None:
-        return False
-    if equivalent and isinstance(left, str) and isinstance(right, str):
-        return " ".join(left.split()).casefold() == " ".join(right.split()).casefold()
-    if isinstance(left, bool):
-        return left == right
-    if isinstance(left, (int, float, Decimal)) and isinstance(right, (int, float, Decimal)):
-        return number(left) == number(right)
-    return left == right
+    return ScalarValue.model_construct(root=left).equals(right, equivalent=equivalent)
 
 
 def unique(collection: list[Item]) -> list[Item]:
     """Retain first occurrences using FHIRPath equality."""
-    result: list[Item] = []
-    for item in collection:
-        if not any(equal(item.system_value(), previous.system_value()) for previous in result):
-            result.append(item)
-    return result
+    return OperatorCollection.model_construct(root=collection).unique()
 
 
 class ScalarValue(RootModel[Value]):
     """Typed scalar comparison behavior, independent of collection cardinality."""
 
     model_config = ConfigDict(frozen=True)
+
+    def number(self) -> Decimal:
+        """Normalize a numeric primitive without Boolean or float rounding coercion."""
+        value = self.root
+        if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+            raise FHIRPathError("Expected a numeric value")
+        return Decimal(str(value))
+
+    def equals(self, right: Value, *, equivalent: bool = False) -> bool | None:
+        """Compare compatible quantities, temporal values and primitives."""
+        left = self.root
+        if isinstance(left, bool) != isinstance(right, bool):
+            return False
+        if QuantityValue.is_quantity(left) or QuantityValue.is_quantity(right):
+            a, b = QuantityValue.operand(left), QuantityValue.operand(right)
+            return a.equals(b, equivalent=equivalent) if a is not None and b is not None else False
+        if (a_time := TemporalValue.from_value(left)) is not None:
+            b_time = TemporalValue.from_value(right)
+            return a_time.equals(b_time, equivalent=equivalent) if b_time is not None else False
+        if TemporalValue.from_value(right) is not None:
+            return False
+        if equivalent and isinstance(left, str) and isinstance(right, str):
+            return " ".join(left.split()).casefold() == " ".join(right.split()).casefold()
+        if isinstance(left, bool):
+            return left == right
+        if isinstance(left, (int, float, Decimal)) and isinstance(right, (int, float, Decimal)):
+            return number(left) == number(right)
+        return left == right
 
     def compare(self, b: Value) -> int | None:
         """Order compatible native scalar values without coercing Booleans."""
@@ -109,94 +105,114 @@ class ScalarValue(RootModel[Value]):
                 raise FHIRPathError("Cannot order values of incompatible types")
 
 
-def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
-    """Apply a binary operator with FHIRPath empty-collection behavior."""
-    if operator == "|":
-        return unique([*left, *right])
-    if operator in {"and", "or", "xor", "implies"}:
-        a, b = boolean(left), boolean(right)
-        match operator:
-            case "and":
-                return items(False if a is False or b is False else None if a is None or b is None else True)
-            case "or":
-                return items(True if a is True or b is True else None if a is None or b is None else False)
-            case "xor":
-                return items(None if a is None or b is None else a != b)
-            case "implies":
-                return items(True if a is False or b is True else None if a is None or b is None else b)
-            case _:
-                raise UnsupportedFeatureError(f"Unsupported Boolean operator: {operator}")
-    if operator in {"~", "!~"}:
-        remaining = list(right)
-        equivalent = len(left) == len(right)
-        for item in left:
-            for index, other in enumerate(remaining):
-                if equal(item.system_value(), other.system_value(), equivalent=True) is True:
-                    remaining.pop(index)
-                    break
+class OperatorCollection(NativeCollection):
+    """Collection equality, set membership and binary operations own their focus."""
+
+    def unique(self) -> list[Item]:
+        """Retain first occurrences using FHIRPath scalar equality."""
+        collection = self.root
+        result: list[Item] = []
+        for item in collection:
+            if not any(equal(item.system_value(), previous.system_value()) for previous in result):
+                result.append(item)
+        return result
+
+    def binary(self, operator: str, right: list[Item]) -> list[Item]:
+        """Apply binary semantics to this collection and the right operand."""
+        left = self.root
+        if operator == "|":
+            return unique([*left, *right])
+        if operator in {"and", "or", "xor", "implies"}:
+            a, b = boolean(left), boolean(right)
+            match operator:
+                case "and":
+                    return items(False if a is False or b is False else None if a is None or b is None else True)
+                case "or":
+                    return items(True if a is True or b is True else None if a is None or b is None else False)
+                case "xor":
+                    return items(None if a is None or b is None else a != b)
+                case "implies":
+                    return items(True if a is False or b is True else None if a is None or b is None else b)
+                case _:
+                    raise UnsupportedFeatureError(f"Unsupported Boolean operator: {operator}")
+        if operator in {"~", "!~"}:
+            remaining = list(right)
+            equivalent = len(left) == len(right)
+            for item in left:
+                for index, other in enumerate(remaining):
+                    if equal(item.system_value(), other.system_value(), equivalent=True) is True:
+                        remaining.pop(index)
+                        break
+                else:
+                    equivalent = False
+            return items(equivalent if operator == "~" else not equivalent)
+        if operator == "&":
+            return items((string(left) if left else "") + (string(right) if right else ""))
+        if not left or not right:
+            return items(False) if (operator == "in" and left) or (operator == "contains" and right) else []
+        if operator in {"=", "!="}:
+            if len(left) != len(right):
+                return items(operator == "!=")
+            comparisons = [equal(a.system_value(), b.system_value()) for a, b in zip(left, right, strict=True)]
+            if any(value is False for value in comparisons):
+                same: bool | None = False
             else:
-                equivalent = False
-        return items(equivalent if operator == "~" else not equivalent)
-    if operator == "&":
-        return items((string(left) if left else "") + (string(right) if right else ""))
-    if not left or not right:
-        return items(False) if (operator == "in" and left) or (operator == "contains" and right) else []
-    if operator in {"=", "!="}:
-        if len(left) != len(right):
-            return items(operator == "!=")
-        comparisons = [equal(a.system_value(), b.system_value()) for a, b in zip(left, right, strict=True)]
-        if any(value is False for value in comparisons):
-            same: bool | None = False
-        else:
-            same = None if any(value is None for value in comparisons) else True
-        return items(same if operator == "=" else not same if same is not None else None)
-    if operator in {"in", "contains"}:
-        singleton, collection = (left, right) if operator == "in" else (right, left)
-        value = one(singleton)
-        return items(any(equal(value, other.system_value()) for other in collection))
-    a, b = one(left), one(right)
-    if operator in {"<", "<=", ">", ">="}:
-        comparison = ScalarValue.model_construct(root=a).compare(b)
-        if comparison is None:
-            return []
-        return items({"<": comparison < 0, "<=": comparison <= 0, ">": comparison > 0, ">=": comparison >= 0}[operator])
-    if operator == "+" and isinstance(a, str) and isinstance(b, str):
-        return items(a + b)
-    if (temporal := TemporalValue.from_value(a)) is not None:
-        quantity = QuantityValue.operand(b)
-        if operator not in {"+", "-"} or quantity is None:
-            raise FHIRPathError("Temporal arithmetic requires addition/subtraction of a time quantity")
-        return items(temporal.shifted(quantity, subtract=operator == "-"))
-    if QuantityValue.is_quantity(a) or QuantityValue.is_quantity(b):
-        left_quantity, right_quantity = QuantityValue.operand(a), QuantityValue.operand(b)
-        if left_quantity is None or right_quantity is None:
-            return []
-        return items(left_quantity.arithmetic(operator, right_quantity))
-    x, y = number(a), number(b)
-    if isinstance(a, int) and isinstance(b, int):
+                same = None if any(value is None for value in comparisons) else True
+            return items(same if operator == "=" else not same if same is not None else None)
+        if operator in {"in", "contains"}:
+            singleton, collection = (left, right) if operator == "in" else (right, left)
+            value = one(singleton)
+            return items(any(equal(value, other.system_value()) for other in collection))
+        a, b = one(left), one(right)
+        if operator in {"<", "<=", ">", ">="}:
+            comparison = ScalarValue.model_construct(root=a).compare(b)
+            if comparison is None:
+                return []
+            return items(
+                {"<": comparison < 0, "<=": comparison <= 0, ">": comparison > 0, ">=": comparison >= 0}[operator]
+            )
+        if operator == "+" and isinstance(a, str) and isinstance(b, str):
+            return items(a + b)
+        if (temporal := TemporalValue.from_value(a)) is not None:
+            quantity = QuantityValue.operand(b)
+            if operator not in {"+", "-"} or quantity is None:
+                raise FHIRPathError("Temporal arithmetic requires addition/subtraction of a time quantity")
+            return items(temporal.shifted(quantity, subtract=operator == "-"))
+        if QuantityValue.is_quantity(a) or QuantityValue.is_quantity(b):
+            left_quantity, right_quantity = QuantityValue.operand(a), QuantityValue.operand(b)
+            if left_quantity is None or right_quantity is None:
+                return []
+            return items(left_quantity.arithmetic(operator, right_quantity))
+        x, y = number(a), number(b)
+        if isinstance(a, int) and isinstance(b, int):
+            match operator:
+                case "+":
+                    return items(a + b)
+                case "-":
+                    return items(a - b)
+                case "*":
+                    return items(a * b)
+                case "mod":
+                    return items((-1 if a < 0 else 1) * (abs(a) % abs(b))) if b else []
+                case _:
+                    pass
         match operator:
             case "+":
-                return items(a + b)
+                return items(x + y)
             case "-":
-                return items(a - b)
+                return items(x - y)
             case "*":
-                return items(a * b)
+                return items(x * y)
+            case "/":
+                return items(x / y) if y else []
+            case "div":
+                return items(int(x / y)) if y else []
             case "mod":
-                return items((-1 if a < 0 else 1) * (abs(a) % abs(b))) if b else []
+                return items(x % y) if y else []
             case _:
-                pass
-    match operator:
-        case "+":
-            return items(x + y)
-        case "-":
-            return items(x - y)
-        case "*":
-            return items(x * y)
-        case "/":
-            return items(x / y) if y else []
-        case "div":
-            return items(int(x / y)) if y else []
-        case "mod":
-            return items(x % y) if y else []
-        case _:
-            raise UnsupportedFeatureError(f"Unsupported operator: {operator}")
+                raise UnsupportedFeatureError(f"Unsupported operator: {operator}")
+
+
+def binary(operator: str, left: list[Item], right: list[Item]) -> list[Item]:
+    """Apply a binary operator with FHIRPath empty-collection behavior."""
+    return OperatorCollection.model_construct(root=left).binary(operator, right)

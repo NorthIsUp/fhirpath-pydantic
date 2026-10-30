@@ -29,6 +29,36 @@ class CompiledQuery[T](BaseModel):
         """Cache a validated compiled plan without retaining evaluation inputs."""
         return cls(node=parse(expression), adapter=adapter)
 
+    @classmethod
+    def from_expression(
+        cls, expression: str | Expression, adapter: TypeAdapter[T], options: EvaluationOptions | None = None
+    ) -> CompiledQuery[T]:
+        """Construct a native query, caching only default text-based configurations."""
+        if isinstance(expression, str) and options is None:
+            return cls.from_text(expression, adapter)
+        node = parse(expression) if isinstance(expression, str) else expression.node
+        return cls(node=node, adapter=adapter, options=options if options is not None else EvaluationOptions())
+
+    def as_array[I: Value](self, input_type: type[I]) -> CompiledArray[I, T]:
+        """Expose a callback that checks the declared native input model."""
+
+        def run(resource: I, context: Mapping[str, Value] | None = None) -> list[T]:
+            if not isinstance(resource, input_type):
+                raise FHIRPathError(f"Expected input type {input_type.__name__}")
+            return self(resource, context)
+
+        return run
+
+    def as_first[I: Value](self, input_type: type[I]) -> CompiledFirst[I, T]:
+        """Expose a typed optional-first callback with native input checking."""
+        query = self.as_array(input_type)
+
+        def run(resource: I, context: Mapping[str, Value] | None = None) -> T | None:
+            result = query(resource, context)
+            return result[0] if result else None
+
+        return run
+
     def __call__(self, resource: Value, context: Mapping[str, Value] | None = None) -> list[T]:
         """Evaluate and strictly validate each returned native value."""
         variables: dict[str, Value] = {
@@ -78,13 +108,9 @@ def compile[T](
     expression: str | Expression, *, output_type: type[T] | None = None, options: EvaluationOptions | None = None
 ) -> CompiledQuery[T] | CompiledQuery[Value]:
     """Compile syntax once and reuse its Pydantic validator for all evaluations."""
-    if isinstance(expression, str) and output_type is None and options is None:
-        return CompiledQuery[Value].from_text(expression, _VALUE_ADAPTER)
-    node = parse(expression) if isinstance(expression, str) else expression.node
-    settings = options if options is not None else EvaluationOptions()
     if output_type is None:
-        return CompiledQuery[Value](node=node, adapter=_VALUE_ADAPTER, options=settings)
-    return CompiledQuery[T](node=node, adapter=TypeAdapter[T](output_type), options=settings)
+        return CompiledQuery[Value].from_expression(expression, _VALUE_ADAPTER, options)
+    return CompiledQuery[T].from_expression(expression, TypeAdapter[T](output_type), options)
 
 
 _VALUE_ADAPTER = TypeAdapter[Value](Value)
@@ -121,24 +147,11 @@ def compile_as_array[I: Value, O](
     expression: str | Expression, input_type: type[I], output_type: type[O], *, options: EvaluationOptions | None = None
 ) -> CompiledArray[I, O]:
     """Compile a query with checked input and output types."""
-    query = compile(expression, output_type=output_type, options=options)
-
-    def run(resource: I, context: Mapping[str, Value] | None = None) -> list[O]:
-        if not isinstance(resource, input_type):
-            raise FHIRPathError(f"Expected input type {input_type.__name__}")
-        return query(resource, context)
-
-    return run
+    return compile(expression, output_type=output_type, options=options).as_array(input_type)
 
 
 def compile_as_first[I: Value, O](
     expression: str | Expression, input_type: type[I], output_type: type[O], *, options: EvaluationOptions | None = None
 ) -> CompiledFirst[I, O]:
     """Compile a typed query returning its first result or None."""
-    query = compile_as_array(expression, input_type, output_type, options=options)
-
-    def run(resource: I, context: Mapping[str, Value] | None = None) -> O | None:
-        result = query(resource, context)
-        return result[0] if result else None
-
-    return run
+    return compile(expression, output_type=output_type, options=options).as_first(input_type)

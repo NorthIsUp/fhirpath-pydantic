@@ -12,6 +12,24 @@ class Expression(BaseModel):
     model_config = ConfigDict(frozen=True)
     node: Node
 
+    @classmethod
+    def from_path(cls, *segments: str) -> Expression:
+        """Construct a field path whose segments remain native syntax data."""
+        expression = cls(node=Node(kind="ThisInvocation"))
+        for segment in segments:
+            expression = expression.field(segment)
+        return expression
+
+    @classmethod
+    def from_literal(cls, value: Value) -> Expression:
+        """Construct a native constant without quoting or string interpolation."""
+        return cls(node=Node(kind="Constant", source="literal", value=value))
+
+    @classmethod
+    def from_variable(cls, name: str) -> Expression:
+        """Construct a runtime variable reference without parsing its name."""
+        return cls(node=Node(kind="Variable", text=name))
+
     def field(self, name: str) -> Expression:
         """Select a FHIR alias or choice field."""
         selection = Node(kind="MemberInvocation", children=(Node(kind="Identifier", text=name),))
@@ -66,18 +84,15 @@ class Expression(BaseModel):
 
 
 def path(*segments: str) -> Expression:
-    """Build a field path; names are data, never parsed FHIRPath source."""
-    expression = Expression(node=Node(kind="ThisInvocation"))
-    for segment in segments:
-        expression = expression.field(segment)
-    return expression
+    """Build a field path without parsing its names as query source."""
+    return Expression.from_path(*segments)
 
 
 def literal(value: Value) -> Expression:
     """Embed a native constant without quoting or string escaping."""
-    return Expression(node=Node(kind="Constant", source="literal", value=value))
+    return Expression.from_literal(value)
 
 
 def var(name: str) -> Expression:
     """Bind a variable whose value is supplied at evaluation time."""
-    return Expression(node=Node(kind="Variable", text=name))
+    return Expression.from_variable(name)

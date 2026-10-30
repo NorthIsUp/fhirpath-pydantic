@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
 
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.type_info import TypeInfo
-from fhirpath_pydantic.types import Collection, Value
+from fhirpath_pydantic.types import Collection, FHIRPathError, Value
 
 _VALUE = TypeAdapter[Value](Value)
 type ResourceModel = R4BResource | R5Resource
@@ -25,6 +25,36 @@ class Item(BaseModel):
     extension: Value = None
     owner: ResourceModel | None = None
     declared_type: TypeInfo | None = None
+
+    @classmethod
+    def singleton(cls, collection: list[Item]) -> Value:
+        """Require at most one item and expose its implicit System value."""
+        if len(collection) > 1:
+            raise FHIRPathError("Expected a singleton collection")
+        return collection[0].system_value() if collection else None
+
+    @classmethod
+    def boolean(cls, collection: list[Item]) -> bool | None:
+        """Evaluate a singleton collection with FHIRPath Boolean semantics."""
+        if not collection:
+            return None
+        value = cls.singleton(collection)
+        return value if isinstance(value, bool) else True
+
+    @classmethod
+    def integer(cls, collection: list[Item]) -> int:
+        """Require one Integer item without Boolean coercion."""
+        value = cls.singleton(collection)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise FHIRPathError("Expected an Integer singleton")
+        return value
+
+    @classmethod
+    def string(cls, collection: list[Item]) -> str:
+        """Require one String item without implicit numeric conversion."""
+        if not isinstance(value := cls.singleton(collection), str):
+            raise FHIRPathError("Expected a String singleton")
+        return value
 
     def system_value(self) -> Value:
         """Convert declared FHIR temporal primitives only at an operation boundary."""
