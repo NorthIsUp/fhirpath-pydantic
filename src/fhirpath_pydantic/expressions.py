@@ -1,9 +1,37 @@
 """Compose native syntax nodes without interpolating or reparsing query strings."""
 
-from pydantic import BaseModel, ConfigDict
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, TypeAdapter
 
 from fhirpath_pydantic.syntax import Node
 from fhirpath_pydantic.types import Value
+
+type BinaryOperator = Literal[
+    "|",
+    "=",
+    "!=",
+    "~",
+    "!~",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "in",
+    "contains",
+    "&",
+    "+",
+    "-",
+    "*",
+    "/",
+    "mod",
+    "div",
+    "or",
+    "and",
+    "xor",
+    "implies",
+]
+_BINARY_OPERATOR = TypeAdapter[BinaryOperator](BinaryOperator)
 
 
 class Expression(BaseModel):
@@ -59,28 +87,30 @@ class Expression(BaseModel):
         """Filter to a native FHIR resource or datatype."""
         return self.call("ofType", Expression(node=Node(kind="TypeSpecifier", text=model.__name__, target_model=model)))
 
-    def _binary(self, operator: str, other: Expression) -> Expression:
-        return Expression(node=Node(kind="Binary", tokens=(operator,), children=(self.node, other.node)))
+    def binary(self, operator: BinaryOperator, other: Expression) -> Expression:
+        """Compose a checked native operator without rendering either operand as text."""
+        token = _BINARY_OPERATOR.validate_python(operator, strict=True)
+        return Expression(node=Node(kind="Binary", tokens=(token,), children=(self.node, other.node)))
 
     def eq(self, other: Expression) -> Expression:
         """Compare values using FHIRPath equality."""
-        return self._binary("=", other)
+        return self.binary("=", other)
 
     def ne(self, other: Expression) -> Expression:
         """Compare values using FHIRPath inequality."""
-        return self._binary("!=", other)
+        return self.binary("!=", other)
 
     def gt(self, other: Expression) -> Expression:
         """Test strict ordering."""
-        return self._binary(">", other)
+        return self.binary(">", other)
 
     def and_(self, other: Expression) -> Expression:
         """Compose predicates using three-valued Boolean conjunction."""
-        return self._binary("and", other)
+        return self.binary("and", other)
 
     def or_(self, other: Expression) -> Expression:
         """Compose predicates using three-valued Boolean disjunction."""
-        return self._binary("or", other)
+        return self.binary("or", other)
 
 
 def path(*segments: str) -> Expression:

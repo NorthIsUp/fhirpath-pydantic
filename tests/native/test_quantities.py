@@ -26,7 +26,7 @@ from fhirpath_pydantic.types import Collection
         ("1 year < 2 months", [False]),
         ("1 year > 2 months", [True]),
         ("1 year <= 2 days", [False]),
-        ("1 year = 1 'a'", [False]),
+        ("1 year = 1 'a'", []),
         ("1 year ~ 1 'a'", [True]),
         ("1 year > 1 'a'", []),
         ("1 second = 1 's'", [True]),
@@ -291,3 +291,29 @@ def test_large_quantity_arithmetic_preserves_digits() -> None:
     assert evaluate(quantity, "$this * 2") == [
         QuantityValue(value=Decimal("246913578024691357802469135780.246913578"), unit="g")
     ]
+
+
+@pytest.mark.parametrize(
+    ("calendar", "ucum"),
+    [("week", "wk"), ("day", "d"), ("hour", "h"), ("minute", "min"), ("second", "s"), ("millisecond", "ms")],
+)
+def test_fixed_calendar_and_ucum_units_are_interchangeable(calendar: str, ucum: str) -> None:
+    """The corresponding fixed-duration forms support equality, comparison and addition."""
+    assert evaluate(None, f"1 {calendar} = 1 '{ucum}'") == [True]
+    assert evaluate(None, f"1 '{ucum}' = 1 {calendar}") == [True]
+    assert evaluate(None, f"1 {calendar} < 2 '{ucum}'") == [True]
+    assert evaluate(None, f"(1 {calendar} + 1 '{ucum}').value") == [Decimal(2)]
+
+
+@pytest.mark.parametrize(("calendar", "ucum"), [("year", "a"), ("month", "mo")])
+def test_calendar_year_and_month_ucum_equality_is_unknown(calendar: str, ucum: str) -> None:
+    """Mean UCUM durations do not establish the length of a calendar year or month."""
+    assert evaluate(None, f"1 {calendar} = 1 '{ucum}'") == []
+    assert evaluate(None, f"1 '{ucum}' = 1 {calendar}") == []
+    assert evaluate(None, f"1 {calendar} ~ 1 '{ucum}'") == [True]
+
+
+def test_calendar_quantity_string_uses_calendar_literal_form() -> None:
+    """Calendar units render without UCUM quotes and still parse as the same quantity."""
+    assert evaluate(None, "(1 week).toString()") == ["1 week"]
+    assert evaluate(None, "(1 week).toString().toQuantity() = 1 week") == [True]

@@ -11,7 +11,7 @@ from fhir.resources.patient import Patient
 from fhir.resources.R4B.patient import Patient as R4BPatient
 from pydantic import BaseModel, PrivateAttr, TypeAdapter, ValidationError, model_validator
 
-from fhirpath_pydantic import CompiledQuery, FHIRPathError, compile, evaluate, literal, path
+from fhirpath_pydantic import CompiledQuery, FHIRPathError, QuantityValue, compile, evaluate, literal, path
 from fhirpath_pydantic import query as query_module
 from fhirpath_pydantic.types import Collection, NativeModel, Value
 
@@ -413,3 +413,17 @@ def test_terminating_decimal_division_keeps_all_places() -> None:
     denominator = Decimal(2**100)
     expected = Decimal(f"{5**100}e-100")
     assert compile("$this / %denominator", output_type=Decimal)(Decimal(1), {"denominator": denominator}) == [expected]
+
+
+def test_fluent_native_date_arithmetic_never_parses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Native typed durations compose with FHIR fields without expression rendering."""
+    patient = Patient.model_validate({"birthDate": "2018-02-01"})
+
+    def reject_parse(expression: str) -> None:
+        raise AssertionError("Fluent arithmetic must not parse query text")
+
+    monkeypatch.setattr(query_module, "parse", reject_parse)
+    expression = path("birthDate").binary("+", literal(QuantityValue(value=Decimal(1), unit="d")))
+    assert compile(expression.eq(literal(date(2018, 2, 2))), output_type=bool)(patient) == [True]
+    assert compile(literal(Decimal("7.5")).binary("/", literal(3)), output_type=Decimal)(None) == [Decimal("2.5")]
+    assert compile(path("birthDate").binary("<=", literal(date(2018, 2, 2))), output_type=bool)(patient) == [True]

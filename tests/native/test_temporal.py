@@ -132,7 +132,6 @@ def test_calendar_arithmetic(expression: str, expected: Collection) -> None:
     [
         "@2018 + 1 'a'",
         "@2018-02 + 1 'mo'",
-        "@2018-02-01 + 1 'd'",
         "@T12 + 1 day",
         "@T12 + 1 year",
         "@2018-02-01 + 1 'kg'",
@@ -217,3 +216,23 @@ def test_native_time_comparison_ignores_ambient_decimal_precision() -> None:
     with localcontext() as context:
         context.prec = 6
         assert evaluate(time(12, 34, 59, 123456), "$this = %other", {"other": time(12, 34, 59, 123457)}) == [False]
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("@1973-12-25 + 1 'd'", date(1973, 12, 26)),
+        ("@1973-12-25 + 1 'wk'", date(1974, 1, 1)),
+        ("@2016-02-28 + 1.5 'wk'", date(2016, 3, 6)),
+        ("@2016-02-28 - 1 'd'", date(2016, 2, 27)),
+        ("@1973-12-25T00:00:00 + 1 'min'", datetime(1973, 12, 25, 0, 1)),
+        ("@1973-12-25T00:00:00 + 1 'h'", datetime(1973, 12, 25, 1)),
+        ("@T23:30:00 + 1 'h'", time(0, 30)),
+        ("@T00:30:00 - 1 'h'", time(23, 30)),
+        ("(@2016-01 + 30 'd').toString()", "2016-02"),
+        ("(@2016-01 + 29 'd').toString()", "2016-01"),
+    ],
+)
+def test_fixed_ucum_temporal_arithmetic(expression: str, expected: date | time | str) -> None:
+    """Fixed-duration UCUM inputs retain upstream arithmetic on native temporal values."""
+    assert evaluate(None, expression) == [expected]

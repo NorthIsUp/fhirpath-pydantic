@@ -32,6 +32,9 @@ creates a reusable query with `.first()` and cardinality-checking `.one()` helpe
 `compile_as_array` and `compile_as_first` additionally check the input model class.
 `literal(value)` embeds a native constant in a fluent expression; `var(name)` binds
 runtime data. Neither constructs or interpolates FHIRPath text.
+`expression.binary(operator, other)` supports arithmetic, ordering, membership,
+set and Boolean operators. Its `BinaryOperator` argument is statically typed and
+validated with Pydantic; both operands remain native syntax nodes.
 
 Evaluation reads Pydantic fields directly. FHIR aliases (`Encounter.class`), choice
 groups (`Observation.value`), and primitive extensions come from model metadata.
@@ -82,8 +85,9 @@ resolution requires FHIR models. Use R4B or R5 models for clinical resources.
 Partial temporal results use the frozen `TemporalValue` Pydantic model; complete
 values retain Python temporal types. Missing precision produces an indeterminate
 comparison where required. Calendar arithmetic clamps month-end dates, retains
-partial precision, and preserves fractional seconds. Definite UCUM durations above
-seconds are rejected in temporal arithmetic; use calendar units such as `day`. `literal(TemporalValue(kind="DateTime", year=2018))`
+partial precision, and preserves fractional seconds. Fixed UCUM durations
+(`wk`, `d`, `h`, `min`, `s`, `ms`) work as their corresponding calendar components.
+Mean UCUM years/months (`a`, `mo`) require explicit conversion to calendar units. `literal(TemporalValue(kind="DateTime", year=2018))`
 works without query text. Text literals also support partial DateTimes such as
 `@2018T`, `@2018-02T`, and `@2018-02-02T`.
 
@@ -91,8 +95,9 @@ Quantity results use the frozen `QuantityValue` Pydantic model. Known conversion
 cover mass, length, volume, time and their products/quotients. Other UCUM codes
 remain opaque and exact-match only; this is not a complete UCUM catalogue. Native
 FHIR quantities require a UCUM system and code for implicit conversion, and a
-comparator cannot silently become an exact value. Calendar durations remain
-separate from definite units; conversion uses Decimal without integer rounding. Quantity equivalence carries
+comparator cannot silently become an exact value. Calendar years/months remain
+indeterminate against their mean UCUM counterparts, while fixed durations from
+weeks through milliseconds are interchangeable; conversion uses Decimal without integer rounding. Quantity equivalence carries
 input precision through unit conversion; exact equality and converted values
 remain exact.
 

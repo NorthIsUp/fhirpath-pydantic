@@ -53,8 +53,8 @@ under a caller's low Decimal precision.
 
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Original fhirpathpy YAML | 1,545 | 1,379 | 21 | 0 | 75 | 70 |
-| Official HL7 R4/R4B/R5 XML | 3,613 | 2,824 | 64 | 690 | 35 | 0 |
+| Original fhirpathpy YAML | 1,545 | 1,387 | 13 | 0 | 75 | 70 |
+| Official HL7 R4/R4B/R5 XML | 3,613 | 2,857 | 31 | 690 | 35 | 0 |
 
 Run `mise run parity` and `mise run parity:hl7` to reproduce the complete JSON
 reports under `dist/`. Both commands currently exit nonzero. Error assertions
@@ -65,8 +65,8 @@ are in `tests/hl7/README.md` and `tests/hl7/sources.json`.
 The original YAML corpus includes malformed synthetic FHIR resources and a
 fragment without required `linkId`; those reject during native validation.
 Some remaining YAML differences are intentional native behavior: declared FHIR
-primitive identity, full native timestamp precision, and calendar versus definite
-durations. A legacy assertion also expects `System.Patient` to return false; the
+primitive identity, full native timestamp precision, and calendar year/month
+uncertainty against mean UCUM durations. A legacy assertion also expects `System.Patient` to return false; the
 native evaluator rejects that unresolved type name (`FHIR.Patient` is valid).
 Three more legacy assertions use the old grammar precedence. Native `is` and `as`
 bind after arithmetic and before union or comparison, as specified by the
@@ -119,9 +119,16 @@ strings, and omits extension-only primitive slots from the joined scalar values.
 Unanchored calendar quantities use the normative conversion factors (one year
 can convert to 12 months or 365 days). Several pinned historical assertions
 expect these cross-unit comparisons to be indeterminate; the native tests retain
-the documented conversion behavior. Calendar versus definite UCUM durations
-above seconds remain unequal for equality and may be equivalent. These policies
-follow the [normative Quantity definitions](https://hl7.org/fhirpath/N1/index.html).
+the documented conversion behavior. Fixed UCUM durations (`wk`, `d`, `h`, `min`,
+`s`, `ms`) support native date/time arithmetic and compare interchangeably with
+corresponding calendar units. Mean UCUM years/months are indeterminate against
+calendar years/months unless explicitly converted, and may be equivalent. Calendar
+quantity strings use calendar literal syntax without UCUM quotes. These policies
+follow the [current Quantity definitions](https://hl7.org/fhirpath/en/index.html).
+
+The fluent `binary()` method accepts the checked `BinaryOperator` type, so numeric,
+quantity and temporal operations do not require rendering operands into query text.
+The native arithmetic regression test rejects any attempt to invoke the parser.
 
 ## Unit and execution boundaries
 

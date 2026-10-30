@@ -153,9 +153,9 @@ class TemporalValue(BaseModel):
 
     def shifted(self, quantity: QuantityValue, *, subtract: bool = False) -> date | time | Self:
         """Apply calendar arithmetic without adding precision to partial inputs."""
-        unit = {"s": "second", "ms": "millisecond"}.get(quantity.unit, quantity.unit)
-        if unit not in QuantityUnit.CALENDAR_TO_UCUM:
-            raise FHIRPathError("Temporal arithmetic requires a calendar duration or seconds/milliseconds")
+        unit = QuantityUnit.from_code(quantity.unit).arithmetic_unit()
+        if unit is None:
+            raise FHIRPathError("Temporal arithmetic requires a calendar duration or compatible fixed UCUM unit")
         if self.kind == "Time" and unit in {"year", "month", "week", "day"}:
             raise FHIRPathError("Time arithmetic requires hours, minutes, seconds or milliseconds")
         amount = quantity.value.copy_negate() if subtract else quantity.value

@@ -70,6 +70,9 @@ class QuantityUnit(BaseModel):
         "second": "s",
         "millisecond": "ms",
     }
+    FIXED_TO_CALENDAR: ClassVar[dict[str, str]] = {
+        unit: calendar for calendar, unit in CALENDAR_TO_UCUM.items() if calendar not in {"year", "month"}
+    }
     FHIR_CALENDAR: ClassVar[dict[str, str]] = {
         "a": "year",
         "mo": "month",
@@ -141,8 +144,12 @@ class QuantityUnit(BaseModel):
         return cls(symbol=code, dimensions=UnitTerms.model_validate(dimensions), factor=factor)
 
     def is_calendar(self) -> bool:
-        """Calendar durations and definite UCUM durations have distinct semantics."""
+        """Recognize explicit calendar-unit names."""
         return self.symbol in self.CALENDAR_TO_UCUM
+
+    def arithmetic_unit(self) -> str | None:
+        """Map fixed UCUM durations to calendar components while rejecting mean years/months."""
+        return self.symbol if self.is_calendar() else self.FIXED_TO_CALENDAR.get(self.symbol)
 
 
 class QuantityValue(BaseModel):
@@ -242,7 +249,7 @@ class QuantityValue(BaseModel):
             return False
         if not equivalent and left.is_calendar() != right.is_calendar():
             calendar = self.unit if left.is_calendar() else other.unit
-            if calendar not in {"second", "millisecond"}:
+            if calendar in {"year", "month"}:
                 return False
         return True
 
@@ -275,16 +282,9 @@ class QuantityValue(BaseModel):
         )
 
     def equals(self, other: QuantityValue, *, equivalent: bool = False) -> bool | None:
-        """Calendar and definite durations above seconds are unequal, not identical."""
+        """Equality propagates uncertainty for calendar years/months versus mean UCUM units."""
         if equivalent:
             return self.equivalent(other)
-        left, right = QuantityUnit.from_code(self.unit), QuantityUnit.from_code(other.unit)
-        if (
-            left.is_calendar() != right.is_calendar()
-            and not self.comparable(other)
-            and left.dimensions == right.dimensions
-        ):
-            return False
         comparison = self.compare(other, equivalent=equivalent)
         return comparison == 0 if comparison is not None else None
 
@@ -330,7 +330,8 @@ class QuantityValue(BaseModel):
         number = format(self.value, "f")
         if "." in number:
             number = number.rstrip("0").rstrip(".")
-        return f"{number} '{self.unit}'"
+        unit = self.unit if QuantityUnit.from_code(self.unit).is_calendar() else f"'{self.unit}'"
+        return f"{number} {unit}"
 
 
 class QuantityComparison(BaseModel):
