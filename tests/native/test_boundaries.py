@@ -2,7 +2,7 @@
 
 from collections.abc import Generator
 from datetime import date, datetime, time
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Annotated, Self, override
 
 import pytest
@@ -348,3 +348,44 @@ def test_native_nested_primitive_extensions(resource_type: type[Patient] | type[
     ) == ["someid2"]
     assert evaluate(patient, "active.extension({})") == []
     assert evaluate(patient, "name.extension({})") == []
+
+
+@pytest.mark.parametrize("value", [-2, 0, 1234567890123456789012345678901234567890])
+def test_absolute_integer_preserves_native_type(value: int) -> None:
+    """Integer math remains usable with a strict integer result adapter."""
+    query = compile("abs()", output_type=int)
+    assert query(value) == [abs(value)]
+    assert evaluate(value, "abs().is(Integer)") == [True]
+
+
+def test_decimal_absolute_preserves_all_digits() -> None:
+    """Absolute value does not round a native Decimal to the active decimal context."""
+    value = Decimal("-1234567890123456789012345678901234567890.123456789")
+    assert compile("abs()", output_type=Decimal)(value) == [value.copy_abs()]
+
+
+def test_decimal_round_preserves_integer_digits() -> None:
+    """Rounding a long native Decimal keeps the integer part instead of returning empty."""
+    value = Decimal("1234567890123456789012345678901234567890.123456789")
+    assert compile("round(4)", output_type=Decimal)(value) == [Decimal("1234567890123456789012345678901234567890.1235")]
+
+
+def test_coalesce_has_no_artificial_argument_ceiling() -> None:
+    """The fluent form passes arbitrarily many native AST arguments without rendering text."""
+    query = literal(None).call("coalesce", *(literal(None) for _ in range(101)), literal(7))
+    assert evaluate(None, query) == [7]
+
+
+def test_absolute_native_fhir_integer_has_strict_integer_output() -> None:
+    """FHIR integer fields produce a System Integer when a numeric function creates a value."""
+    patient = Patient.model_validate({"multipleBirthInteger": 2})
+    assert compile("multipleBirthInteger.abs()", output_type=int)(patient) == [2]
+
+
+def test_rounding_does_not_depend_on_or_mutate_ambient_precision() -> None:
+    """A caller's Decimal context cannot silently erase digits during requested rounding."""
+    value = Decimal("123456789012345678901234567890.5555")
+    with localcontext() as context:
+        context.prec = 6
+        assert evaluate(value, "round(3)") == [Decimal("123456789012345678901234567890.556")]
+        assert context.prec == 6

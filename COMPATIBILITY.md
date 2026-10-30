@@ -28,6 +28,20 @@ All test filenames above are under `tests/native/`. Family coverage means the
 feature exists and has regression coverage; it is not a claim that every edge
 case in that family passes the official suites.
 
+## Baseline registry coverage
+
+`test_registry.py` reads the installed, pinned 2.2.4 registry without executing its
+untyped definitions. It requires all 87 callable function names to return from at
+least one actual invocation in the native evaluator. It runs the complete YAML
+corpus and a native identity-preserving exclusion probe. The other 24 registry
+entries describe operators or internal operator aliases. This checks dispatch
+coverage; it does not claim that every assertion or edge case passes.
+
+Numeric functions preserve strict native output types: Integer `abs()` stays an
+Integer, Decimal `abs()` retains every digit, and `round()` preserves the integer
+part independently of the caller's Decimal context. Variadic `coalesce()` has no
+fixed upper argument limit and the fluent form does not render arguments as text.
+
 ## Reproducible audit evidence
 
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |

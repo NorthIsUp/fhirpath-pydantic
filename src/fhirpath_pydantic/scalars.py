@@ -5,6 +5,7 @@ import re
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation, localcontext
 
+from fhirpath_pydantic.decimal_value import DecimalValue
 from fhirpath_pydantic.native import Item, NativeCollection, items
 from fhirpath_pydantic.operators import integer, number, one, string
 from fhirpath_pydantic.quantities import QuantityValue
@@ -107,6 +108,8 @@ class PrimitiveCollection(NativeCollection):
             return []
         if (native := one(focus)) is None:
             return []
+        if name == "abs" and isinstance(native, int) and not isinstance(native, bool):
+            return items(abs(native))
         if name == "abs" and QuantityValue.is_quantity(native):
             quantity = QuantityValue.operand(native)
             return items(quantity.absolute() if quantity is not None else None)
@@ -114,7 +117,7 @@ class PrimitiveCollection(NativeCollection):
         try:
             match name:
                 case "abs":
-                    return items(abs(value))
+                    return items(value.copy_abs())
                 case "ceiling":
                     return items(math.ceil(value))
                 case "floor":
@@ -141,9 +144,7 @@ class PrimitiveCollection(NativeCollection):
                     return items(+result)
                 case "round":
                     precision = integer(params[0]) if params and params[0] else 0
-                    if precision < 0:
-                        raise FHIRPathError("round() precision cannot be negative")
-                    return items(value.quantize(Decimal(1).scaleb(-precision), rounding="ROUND_HALF_UP"))
+                    return items(DecimalValue.model_validate(value).rounded(precision))
                 case _:
                     raise UnsupportedFeatureError(f"Unsupported math function: {name}")
         except (InvalidOperation, ZeroDivisionError):  # fmt: skip

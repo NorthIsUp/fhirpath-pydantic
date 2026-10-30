@@ -132,7 +132,8 @@ class State(BaseModel):
             return items(custom.invoke(values(focus), arguments))
         if (arity := _ARITY.get(name)) is None:
             raise UnsupportedFeatureError(f"Unsupported FHIRPath function: {name}")
-        if not arity[0] <= len(args) <= arity[1]:
+        minimum, maximum = arity
+        if len(args) < minimum or maximum is not None and len(args) > maximum:
             raise FHIRPathError(f"Invalid argument count for {name}()")
         if name in {"where", "select", "exists", "all", "repeat", "aggregate"}:
             return self.iterate(name, args, focus)
@@ -383,7 +384,7 @@ def evaluate_node(node: Node, focus: list[Item], state: State) -> list[Item]:
     return state.evaluate(node, focus)
 
 
-_ARITY: dict[str, tuple[int, int]] = {
+_ARITY: dict[str, tuple[int, int | None]] = {
     "type": (0, 0),
     "resolve": (0, 0),
     "trace": (0, 2),
@@ -483,5 +484,5 @@ _ARITY: dict[str, tuple[int, int]] = {
     "round": (0, 1),
     "join": (0, 1),
     "aggregate": (1, 2),
-    "coalesce": (1, 100),
+    "coalesce": (1, None),
 }

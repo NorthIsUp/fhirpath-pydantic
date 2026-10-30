@@ -12,6 +12,14 @@ class DecimalValue(RootModel[Decimal]):
 
     model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
+    def rounded(self, precision: int) -> Decimal:
+        """Round fractional places without losing integer digits to the ambient context."""
+        if precision < 0:
+            raise FHIRPathError("round() precision cannot be negative")
+        with localcontext() as context:
+            context.prec = max(context.prec, self.root.adjusted() + precision + 2)
+            return self.root.quantize(Decimal(1).scaleb(-precision), rounding=ROUND_HALF_UP)
+
     def quantum(self) -> Decimal:
         """Return the least meaningful fractional place, ignoring fractional zeroes."""
         parts = self.root.as_tuple()
