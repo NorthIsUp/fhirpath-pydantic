@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from fhirpath_pydantic.native import Item, items, resource_type
 from fhirpath_pydantic.operators import integer, number, one, string
 from fhirpath_pydantic.quantities import QuantityValue
+from fhirpath_pydantic.text import StringValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
@@ -156,38 +157,4 @@ def strings(name: str, focus: list[Item], params: list[list[Item]]) -> list[Item
     """Apply string functions with strict singleton arguments."""
     if not focus or any(not parameter for parameter in params):
         return []
-    value = string(focus)
-    match name:
-        case "length":
-            return items(len(value))
-        case "upper":
-            return items(value.upper())
-        case "lower":
-            return items(value.lower())
-        case "toChars":
-            return items(list(value))
-        case "substring":
-            start = integer(params[0])
-            if start < 0 or start >= len(value):
-                return []
-            length = integer(params[1]) if len(params) > 1 else len(value)
-            return items(value[start : start + max(length, 0)])
-        case "startsWith":
-            return items(value.startswith(string(params[0])))
-        case "endsWith":
-            return items(value.endswith(string(params[0])))
-        case "contains":
-            return items(string(params[0]) in value)
-        case "indexOf":
-            return items(value.find(string(params[0])))
-        case "matches":
-            return items(re.search(string(params[0]), value) is not None)
-        case "replace":
-            return items(value.replace(string(params[0]), string(params[1])))
-        case "replaceMatches":
-            return items(re.sub(string(params[0]), string(params[1]), value))
-        case "split":
-            separator = string(params[0])
-            return [Item.model_construct(value=part) for part in (value.split(separator) if separator else value)]
-        case _:
-            raise UnsupportedFeatureError(f"Unsupported string function: {name}")
+    return items(StringValue.model_validate(string(focus)).transform(name, params))

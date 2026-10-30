@@ -5,9 +5,12 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from fhirpath_pydantic.aggregates import AggregateCollection
 from fhirpath_pydantic.native import Item, children, items, member, values
 from fhirpath_pydantic.operators import binary, boolean, equal, integer, number, one, string, unique
+from fhirpath_pydantic.options import EvaluationOptions, TraceEvent
 from fhirpath_pydantic.quantities import QuantityValue
+from fhirpath_pydantic.references import ResolutionScope
 from fhirpath_pydantic.scalars import convert, is_type, numeric, strings
 from fhirpath_pydantic.syntax import Node
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
@@ -18,9 +21,26 @@ class State(BaseModel):
 
     model_config = ConfigDict(frozen=True)
     variables: dict[str, Value] = Field(default_factory=dict)
+    options: EvaluationOptions = Field(default_factory=EvaluationOptions)
+    resolution: ResolutionScope = Field(default_factory=ResolutionScope)
     index: int = 0
     total: tuple[Item, ...] = ()
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def resolve(self, focus: list[Item]) -> list[Item]:
+        """Resolve local native references before consulting an explicit caller callback."""
+        result: list[Item] = []
+        for item in focus:
+            references = [item.value] if isinstance(item.value, str) else item.member("reference").values()
+            for reference in references:
+                if not isinstance(reference, str):
+                    continue
+                resource = self.resolution.index.resolve(reference, item.owner)
+                if resource is None:
+                    resource = self.options.resolve(reference)
+                if resource is not None:
+                    result.extend(items(resource))
+        return result
 
     def iterate(self, name: str, args: tuple[Node, ...], focus: list[Item]) -> list[Item]:
         """Evaluate collection macros in isolated child scopes."""
@@ -75,6 +95,10 @@ class State(BaseModel):
 
     def invoke(self, name: str, args: tuple[Node, ...], focus: list[Item]) -> list[Item]:
         """Check function arity before executing it in this evaluation scope."""
+        if (custom := self.options.invocation_table.get(name)) is not None:
+            custom.check_arity(len(args))
+            arguments = tuple(values(self.evaluate(arg, focus)) for arg in args)
+            return items(custom.invoke(values(focus), arguments))
         if (arity := _ARITY.get(name)) is None:
             raise UnsupportedFeatureError(f"Unsupported FHIRPath function: {name}")
         if not arity[0] <= len(args) <= arity[1]:
@@ -98,8 +122,18 @@ class State(BaseModel):
                 return []
             matches = is_type(one(focus), target)
             return items(matches) if name == "is" else focus if matches else []
+        if name == "trace":
+            label = string(self.evaluate(args[0], focus)) if args else ""
+            if self.options.trace is not None:
+                projected = self.evaluate(args[1], focus) if len(args) > 1 else focus
+                self.options.trace(TraceEvent(label=label, values=values(projected)))
+            return focus
         params = [evaluate_node(arg, focus, self) for arg in args]
         match name:
+            case "resolve":
+                return self.resolve(focus)
+            case "sum" | "avg" | "min" | "max":
+                return AggregateCollection.model_construct(root=focus).aggregate(name).root
             case "toQuantity" | "convertsToQuantity":
                 if not focus or params and not params[0]:
                     return []
@@ -307,6 +341,15 @@ def evaluate_node(node: Node, focus: list[Item], state: State) -> list[Item]:
 
 
 _ARITY: dict[str, tuple[int, int]] = {
+    "resolve": (0, 0),
+    "trace": (0, 2),
+    "sum": (0, 0),
+    "avg": (0, 0),
+    "min": (0, 0),
+    "max": (0, 0),
+    "trim": (0, 0),
+    "encode": (1, 1),
+    "decode": (1, 1),
     "toQuantity": (0, 1),
     "convertsToQuantity": (0, 1),
     **dict.fromkeys(

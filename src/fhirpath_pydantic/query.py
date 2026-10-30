@@ -4,11 +4,13 @@ from collections.abc import Mapping
 from functools import lru_cache
 from typing import Protocol, overload
 
-from pydantic import BaseModel, ConfigDict, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from fhirpath_pydantic.engine import State, evaluate_node
 from fhirpath_pydantic.expressions import Expression
 from fhirpath_pydantic.native import items, values
+from fhirpath_pydantic.options import EvaluationOptions
+from fhirpath_pydantic.references import ResolutionScope
 from fhirpath_pydantic.syntax import Node, parse
 from fhirpath_pydantic.types import FHIRPathError, Value
 
@@ -19,6 +21,7 @@ class CompiledQuery[T](BaseModel):
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
     node: Node
     adapter: TypeAdapter[T]
+    options: EvaluationOptions = Field(default_factory=EvaluationOptions)
 
     @classmethod
     @lru_cache(maxsize=512)
@@ -36,7 +39,17 @@ class CompiledQuery[T](BaseModel):
         }
         if context is not None:
             variables.update(context)
-        result = values(evaluate_node(self.node, items(resource), State(variables=variables)))
+        result = values(
+            evaluate_node(
+                self.node,
+                items(resource),
+                State(
+                    variables=variables,
+                    options=self.options,
+                    resolution=ResolutionScope(resource=variables["rootResource"]),
+                ),
+            )
+        )
         return [self.adapter.validate_python(value, strict=True) for value in result]
 
     def first(self, resource: Value, context: Mapping[str, Value] | None = None) -> T | None:
@@ -53,27 +66,38 @@ class CompiledQuery[T](BaseModel):
 
 
 @overload
-def compile(expression: str | Expression, *, output_type: None = None) -> CompiledQuery[Value]: ...
+def compile(
+    expression: str | Expression, *, output_type: None = None, options: EvaluationOptions | None = None
+) -> CompiledQuery[Value]: ...
 @overload
-def compile[T](expression: str | Expression, *, output_type: type[T]) -> CompiledQuery[T]: ...
 def compile[T](
-    expression: str | Expression, *, output_type: type[T] | None = None
+    expression: str | Expression, *, output_type: type[T], options: EvaluationOptions | None = None
+) -> CompiledQuery[T]: ...
+def compile[T](
+    expression: str | Expression, *, output_type: type[T] | None = None, options: EvaluationOptions | None = None
 ) -> CompiledQuery[T] | CompiledQuery[Value]:
     """Compile syntax once and reuse its Pydantic validator for all evaluations."""
-    if isinstance(expression, str) and output_type is None:
+    if isinstance(expression, str) and output_type is None and options is None:
         return CompiledQuery[Value].from_text(expression, _VALUE_ADAPTER)
     node = parse(expression) if isinstance(expression, str) else expression.node
+    settings = options if options is not None else EvaluationOptions()
     if output_type is None:
-        return CompiledQuery[Value](node=node, adapter=TypeAdapter[Value](Value))
-    return CompiledQuery[T](node=node, adapter=TypeAdapter[T](output_type))
+        return CompiledQuery[Value](node=node, adapter=_VALUE_ADAPTER, options=settings)
+    return CompiledQuery[T](node=node, adapter=TypeAdapter[T](output_type), options=settings)
 
 
 _VALUE_ADAPTER = TypeAdapter[Value](Value)
 
 
-def evaluate(resource: Value, expression: str | Expression, context: Mapping[str, Value] | None = None) -> list[Value]:
+def evaluate(
+    resource: Value,
+    expression: str | Expression,
+    context: Mapping[str, Value] | None = None,
+    *,
+    options: EvaluationOptions | None = None,
+) -> list[Value]:
     """Evaluate FHIRPath on native FHIR resources without dumping them."""
-    return compile(expression)(resource, context)
+    return compile(expression, options=options)(resource, context)
 
 
 class CompiledArray[I, O](Protocol):
@@ -93,10 +117,10 @@ class CompiledFirst[I, O](Protocol):
 
 
 def compile_as_array[I: Value, O](
-    expression: str | Expression, input_type: type[I], output_type: type[O]
+    expression: str | Expression, input_type: type[I], output_type: type[O], *, options: EvaluationOptions | None = None
 ) -> CompiledArray[I, O]:
     """Compile a query with checked input and output types."""
-    query = compile(expression, output_type=output_type)
+    query = compile(expression, output_type=output_type, options=options)
 
     def run(resource: I, context: Mapping[str, Value] | None = None) -> list[O]:
         if not isinstance(resource, input_type):
@@ -107,10 +131,10 @@ def compile_as_array[I: Value, O](
 
 
 def compile_as_first[I: Value, O](
-    expression: str | Expression, input_type: type[I], output_type: type[O]
+    expression: str | Expression, input_type: type[I], output_type: type[O], *, options: EvaluationOptions | None = None
 ) -> CompiledFirst[I, O]:
     """Compile a typed query returning its first result or None."""
-    query = compile_as_array(expression, input_type, output_type)
+    query = compile_as_array(expression, input_type, output_type, options=options)
 
     def run(resource: I, context: Mapping[str, Value] | None = None) -> O | None:
         result = query(resource, context)

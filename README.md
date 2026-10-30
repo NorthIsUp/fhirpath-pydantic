@@ -70,8 +70,8 @@ scalar conversions, typed quantity literals/conversion/arithmetic, and
 full-precision temporal literals. Unsupported functions raise `UnsupportedFeatureError`; there is no serialization fallback.
 
 This is **not a drop-in implementation of every fhirpathpy feature**.
-Partial-precision temporal arithmetic/comparison, `resolve()`,
-`type()` metadata, and user invocation tables remain unsupported. Primitive subtype
+Partial-precision temporal arithmetic/comparison and `type()` metadata remain
+unsupported. Primitive subtype
 checks currently use Python representations, so distinct FHIR string-derived types
 are not distinguished. Raw dictionaries support ordinary fields; native choice
 resolution requires FHIR models. Use R4B or R5 models for clinical resources.
@@ -82,6 +82,18 @@ remain opaque and exact-match only; this is not a complete UCUM catalogue. Nativ
 FHIR quantities require a UCUM system and code for implicit conversion, and a
 comparator cannot silently become an exact value. Calendar durations remain
 separate from definite units; conversion uses Decimal without integer rounding.
+
+`EvaluationOptions` registers typed `CustomFunction` definitions, a trace sink,
+and a native reference resolver. Handlers receive `FunctionCall` and return native
+collections; trace sinks receive `TraceEvent`. Pass `options=` to `compile`,
+`evaluate`, or the typed compile helpers. Registration, argument counts and return
+boundaries are validated with Pydantic. Builtin overrides are supported.
+
+`resolve()` indexes native Bundle entries and contained-resource scopes within one
+evaluation, then consults the optional caller resolver. It preserves resource
+identity and performs no implicit network access. An unconfigured `trace()` keeps
+its input and produces no console output. FHIR model subclasses with their own
+Pydantic validators retain their logical resource type.
 
 The original `fhirpathpy/` source and original tests remain in this fork for
 provenance. They are not shipped in the new wheel or included in its strict type
