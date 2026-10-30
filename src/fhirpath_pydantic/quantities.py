@@ -323,3 +323,45 @@ class QuantityValue(BaseModel):
     def __str__(self) -> str:
         number = format(self.value.normalize(), "f")
         return f"{number} '{self.unit}'"
+
+
+class QuantityComparison(BaseModel):
+    """Quantity operands retain native unit text when System conversion is unavailable."""
+
+    model_config = ConfigDict(frozen=True)
+    left: Value
+    right: Value
+
+    def native_values(self) -> tuple[Decimal, Decimal] | None:
+        """Match native unit labels without treating display text as UCUM codes."""
+        left, right = self.left, self.right
+        if not isinstance(left, (R4BQuantity, R5Quantity)) or not isinstance(right, (R4BQuantity, R5Quantity)):
+            return None
+        if left.comparator is not None or right.comparator is not None:
+            raise FHIRPathError("Cannot compare a FHIR Quantity with a comparator as an exact quantity")
+        if left.unit is None and (left.code is not None or right.code is not None):
+            return None
+        if left.unit != right.unit or left.value is None or right.value is None:
+            return None
+        return left.value, right.value
+
+    def equals(self, *, equivalent: bool = False) -> bool | None:
+        """Use UCUM semantics when possible and matching native labels otherwise."""
+        left, right = QuantityValue.operand(self.left), QuantityValue.operand(self.right)
+        if left is not None and right is not None:
+            return left.equals(right, equivalent=equivalent)
+        if (values := self.native_values()) is not None:
+            a, b = values
+            return DecimalValue.model_validate(a).equivalent(b) if equivalent else a == b
+        native = isinstance(self.left, (R4BQuantity, R5Quantity)) and isinstance(self.right, (R4BQuantity, R5Quantity))
+        return None if native and not equivalent else False
+
+    def compare(self) -> int | None:
+        """Only order quantities with compatible coded units or identical native labels."""
+        left, right = QuantityValue.operand(self.left), QuantityValue.operand(self.right)
+        if left is not None and right is not None:
+            return left.compare(right)
+        if (values := self.native_values()) is not None:
+            a, b = values
+            return (a > b) - (a < b)
+        return None

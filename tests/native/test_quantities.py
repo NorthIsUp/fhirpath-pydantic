@@ -191,3 +191,71 @@ def test_system_quantity_absolute(value: str) -> None:
     """Absolute values retain unit and exact Decimal digits beyond context precision."""
     quantity = QuantityValue(value=Decimal(value), unit="mg")
     assert evaluate(quantity, "abs()") == [QuantityValue(value=Decimal(value).copy_abs(), unit="mg")]
+
+
+@pytest.mark.parametrize("quantity_type", [Quantity, R4BQuantity])
+@pytest.mark.parametrize("unit", [None, "tablets", "mg/dL"])
+def test_native_uncoded_quantity_comparison(
+    quantity_type: type[Quantity] | type[R4BQuantity], unit: str | None
+) -> None:
+    """Native quantities with matching unit text compare without becoming UCUM quantities."""
+    left = quantity_type.model_validate({"value": Decimal("1.20"), "unit": unit})
+    right = quantity_type.model_validate({"value": Decimal("1.20"), "unit": unit})
+    higher = quantity_type.model_validate({"value": Decimal("2.40"), "unit": unit})
+    assert evaluate(left, "$this = %right", {"right": right}) == [True]
+    assert evaluate(left, "$this ~ %right", {"right": right}) == [True]
+    assert evaluate(left, "$this < %right", {"right": higher}) == [True]
+    assert evaluate(left, "$this >= %right", {"right": higher}) == [False]
+    assert evaluate(left, "toQuantity()") == []
+    assert left.value == Decimal("1.20")
+
+
+@pytest.mark.parametrize("quantity_type", [Quantity, R4BQuantity])
+def test_native_unit_text_and_coded_quantity_comparison(quantity_type: type[Quantity] | type[R4BQuantity]) -> None:
+    """An uncoded unit matches a coded quantity's display text without unit conversion."""
+    left = quantity_type.model_validate({"value": 1, "unit": "mg/dL"})
+    right = quantity_type.model_validate(
+        {"value": 2, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}
+    )
+    assert evaluate(left, "$this < %right", {"right": right}) == [True]
+    assert evaluate(right, "$this > %left", {"left": left}) == [True]
+
+
+@pytest.mark.parametrize("quantity_type", [Quantity, R4BQuantity])
+def test_native_incompatible_unit_text_is_indeterminate(quantity_type: type[Quantity] | type[R4BQuantity]) -> None:
+    """Different or missing unit text cannot be guessed or converted from display labels."""
+    left = quantity_type.model_validate({"value": 1, "unit": "tablets"})
+    for unit in (None, "Tablets", "capsules"):
+        right = quantity_type.model_validate({"value": 1, "unit": unit})
+        assert evaluate(left, "$this = %right", {"right": right}) == []
+        assert evaluate(left, "$this ~ %right", {"right": right}) == [False]
+        assert evaluate(left, "$this < %right", {"right": right}) == []
+
+
+@pytest.mark.parametrize("quantity_type", [Quantity, R4BQuantity])
+def test_uncoded_comparators_cannot_be_compared_as_exact(quantity_type: type[Quantity] | type[R4BQuantity]) -> None:
+    """Comparison does not drop a comparator merely because UCUM conversion is unavailable."""
+    left = quantity_type.model_validate({"value": 1, "unit": "tablets", "comparator": ">"})
+    right = quantity_type.model_validate({"value": 2, "unit": "tablets"})
+    with pytest.raises(FHIRPathError, match="comparator"):
+        evaluate(left, "$this < %right", {"right": right})
+
+
+@pytest.mark.parametrize("quantity_type", [Quantity, R4BQuantity])
+def test_missing_display_unit_is_not_dimensionless(quantity_type: type[Quantity] | type[R4BQuantity]) -> None:
+    """A coded magnitude cannot match a unitless quantity because both lack display text."""
+    left = quantity_type.model_validate({"value": 1})
+    right = quantity_type.model_validate({"value": 1, "system": "http://unitsofmeasure.org", "code": "mg"})
+    assert evaluate(left, "$this = %right", {"right": right}) == []
+    assert evaluate(left, "$this ~ %right", {"right": right}) == [False]
+    assert evaluate(left, "$this < %right", {"right": right}) == []
+
+
+@pytest.mark.parametrize("quantity_type", [Quantity, R4BQuantity])
+def test_native_quantity_missing_magnitude_is_indeterminate(quantity_type: type[Quantity] | type[R4BQuantity]) -> None:
+    """Unit text does not invent a numeric value for an incomplete native quantity."""
+    left = quantity_type.model_validate({"unit": "tablets"})
+    right = quantity_type.model_validate({"value": 1, "unit": "tablets"})
+    assert evaluate(left, "$this = %right", {"right": right}) == []
+    assert evaluate(left, "$this ~ %right", {"right": right}) == [False]
+    assert evaluate(left, "$this < %right", {"right": right}) == []

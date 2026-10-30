@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, RootModel
 
 from fhirpath_pydantic.decimal_value import DecimalValue
 from fhirpath_pydantic.native import Item, ModelPlan, NativeCollection, items
-from fhirpath_pydantic.quantities import QuantityValue
+from fhirpath_pydantic.quantities import QuantityComparison, QuantityValue
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.types import Collection, FHIRPathError, UnsupportedFeatureError, Value
 
@@ -92,8 +92,7 @@ class ScalarValue(RootModel[Value]):
         if isinstance(left, bool) != isinstance(right, bool):
             return False
         if QuantityValue.is_quantity(left) or QuantityValue.is_quantity(right):
-            a, b = QuantityValue.operand(left), QuantityValue.operand(right)
-            return a.equals(b, equivalent=equivalent) if a is not None and b is not None else False
+            return QuantityComparison(left=left, right=right).equals(equivalent=equivalent)
         if (a_time := TemporalValue.from_value(left)) is not None:
             b_time = TemporalValue.from_value(right)
             return a_time.equals(b_time, equivalent=equivalent) if b_time is not None else False
@@ -133,8 +132,7 @@ class ScalarValue(RootModel[Value]):
         """Order compatible native scalar values without coercing Booleans."""
         a = self.root
         if QuantityValue.is_quantity(a) or QuantityValue.is_quantity(b):
-            left, right = QuantityValue.operand(a), QuantityValue.operand(b)
-            return left.compare(right) if left is not None and right is not None else None
+            return QuantityComparison(left=a, right=b).compare()
         if (a_time := TemporalValue.from_value(a)) is not None and (b_time := TemporalValue.from_value(b)) is not None:
             return a_time.compare(b_time)
         match a, b:

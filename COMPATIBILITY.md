@@ -33,7 +33,7 @@ case in that family passes the official suites.
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Original fhirpathpy YAML | 1,545 | 1,382 | 18 | 0 | 75 | 70 |
-| Official HL7 R4/R4B/R5 XML | 3,613 | 2,762 | 126 | 690 | 35 | 0 |
+| Official HL7 R4/R4B/R5 XML | 3,613 | 2,789 | 99 | 690 | 35 | 0 |
 
 Run `mise run parity` and `mise run parity:hl7` to reproduce the complete JSON
 reports under `dist/`. Both commands currently exit nonzero. Error assertions
@@ -55,8 +55,8 @@ than silently emulated. The report also exposes ordinary function edge cases tha
 still need correction, including indeterminate collection equality and invalid
 type-name handling. Escaped member/function/type/variable names and extension-only primitive scalar propagation
 have native regression coverage in `test_syntax.py` and `test_boundaries.py`.
-Quantity `abs()`, conditional receiver cardinality and compile-time Unicode
-escape validation also have regression coverage.
+Quantity `abs()`, native unit-text comparisons, conditional receiver cardinality
+and compile-time Unicode escape validation also have regression coverage.
 
 Fractional-second DateTime arithmetic preserves the fractional value. The pinned
 R5 suite expects this; the older R4/R4B suites expect fractional seconds to be
@@ -67,7 +67,11 @@ report rather than changing native arithmetic or rewriting the upstream fixtures
 
 Known units support mass, length, volume, calendar/definite time, products and
 quotients. Other unit codes remain opaque and exact-match only. This is not a
-complete UCUM catalogue or UCUM validation service.
+complete UCUM catalogue or UCUM validation service. Native FHIR quantities without
+UCUM codes can compare magnitudes when their unit text matches exactly (including
+two quantities with no unit). This comparison does not enable System.Quantity
+conversion or arithmetic on display labels. Missing magnitudes and incompatible
+labels remain indeterminate; comparator-bearing quantities cannot become exact.
 
 Evaluation does not serialize input models, mutate caller data, or perform implicit
 network access. Resolution uses native Bundle/contained indexes before an explicit
