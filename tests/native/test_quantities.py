@@ -262,3 +262,32 @@ def test_native_quantity_missing_magnitude_is_indeterminate(quantity_type: type[
     assert evaluate(left, "$this = %right", {"right": right}) == []
     assert evaluate(left, "$this ~ %right", {"right": right}) == [False]
     assert evaluate(left, "$this < %right", {"right": right}) == []
+
+
+def test_large_quantity_conversion_preserves_digits() -> None:
+    """A finite unit scaling must not round a native magnitude at 28 digits."""
+    quantity = QuantityValue(value=Decimal("123456789012345678901234567890.123456789"), unit="g")
+    assert evaluate(quantity, "toQuantity('mg').value") == [Decimal("123456789012345678901234567890123.456789")]
+
+
+def test_large_quantity_negation_preserves_digits() -> None:
+    """Unary quantity operations preserve the full native Decimal magnitude."""
+    quantity = QuantityValue(value=Decimal("123456789012345678901234567890.123456789"), unit="g")
+    assert evaluate(quantity, "-$this") == [QuantityValue(value=quantity.value.copy_negate(), unit="g")]
+
+
+def test_large_quantity_string_preserves_digits() -> None:
+    """Rendering a typed quantity cannot change its numeric value."""
+    quantity = QuantityValue(value=Decimal("123456789012345678901234567890.12345678900"), unit="g")
+    assert evaluate(quantity, "toString()") == ["123456789012345678901234567890.123456789 'g'"]
+
+
+def test_large_quantity_arithmetic_preserves_digits() -> None:
+    """Dimensional arithmetic retains long magnitudes rather than silently rounding them."""
+    quantity = QuantityValue(value=Decimal("123456789012345678901234567890.123456789"), unit="g")
+    assert evaluate(quantity, "$this + 1 'g'") == [
+        QuantityValue(value=Decimal("123456789012345678901234567891.123456789"), unit="g")
+    ]
+    assert evaluate(quantity, "$this * 2") == [
+        QuantityValue(value=Decimal("246913578024691357802469135780.246913578"), unit="g")
+    ]

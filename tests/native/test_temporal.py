@@ -1,6 +1,7 @@
 """Precision-aware temporal behavior on native values and parsed literals."""
 
 from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal, localcontext
 
 import pytest
 from pydantic import ValidationError
@@ -195,3 +196,24 @@ def test_mixed_timezone_comparison_is_indeterminate(operator: str, reverse: bool
 def test_timezone_comparison_policy(expression: str, expected: Collection) -> None:
     """Known offsets normalize together; absent offsets retain wall-clock semantics."""
     assert evaluate(None, expression) == expected
+
+
+def test_submicrosecond_tail_is_never_dropped() -> None:
+    """A tiny nonzero fraction cannot be rounded away by the native representability check."""
+    value = TemporalValue(kind="Time", hour=12, minute=34, second=Decimal("59.000000000000000000000000000000000001"))
+    assert value.native() is value
+
+
+def test_temporal_fraction_arithmetic_keeps_declared_precision() -> None:
+    """Date/time addition retains fractional seconds beyond the ambient Decimal context."""
+    expected = TemporalValue(kind="Time", hour=12, minute=34, second=Decimal("59.123456789012345678901234567890124"))
+    assert evaluate(None, "@T12:34:59.123456789012345678901234567890123 + 0.000000000000000000000000000000001 's'") == [
+        expected
+    ]
+
+
+def test_native_time_comparison_ignores_ambient_decimal_precision() -> None:
+    """Distinct native microseconds cannot become equal under a caller's small Decimal context."""
+    with localcontext() as context:
+        context.prec = 6
+        assert evaluate(time(12, 34, 59, 123456), "$this = %other", {"other": time(12, 34, 59, 123457)}) == [False]

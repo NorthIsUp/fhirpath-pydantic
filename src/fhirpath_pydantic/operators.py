@@ -264,17 +264,17 @@ class OperatorCollection(NativeCollection):
                     pass
         match operator:
             case "+":
-                return items(x + y)
+                return items(DecimalValue.model_validate(x).arithmetic("+", y))
             case "-":
-                return items(x - y)
+                return items(DecimalValue.model_validate(x).arithmetic("-", y))
             case "*":
-                return items(x * y)
+                return items(DecimalValue.model_validate(x).arithmetic("*", y))
             case "/":
-                return items(x / y) if y else []
+                return items(DecimalValue.model_validate(x).arithmetic("/", y)) if y else []
             case "div":
-                return items(int(x / y)) if y else []
+                return items(int(DecimalValue.model_validate(x).arithmetic("/", y))) if y else []
             case "mod":
-                return items(x % y) if y else []
+                return items(DecimalValue.model_validate(x).arithmetic("mod", y)) if y else []
             case _:
                 raise UnsupportedFeatureError(f"Unsupported operator: {operator}")
 

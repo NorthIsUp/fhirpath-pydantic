@@ -12,6 +12,45 @@ class DecimalValue(RootModel[Decimal]):
 
     model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
+    def arithmetic(self, operation: str, right: Decimal) -> Decimal:
+        """Keep finite arithmetic exact and retain enough digits for division or remainders."""
+        if not right.is_finite():
+            raise FHIRPathError("Decimal operands must be finite")
+        left_parts, right_parts = self.root.as_tuple(), right.as_tuple()
+        left_exponent, right_exponent = left_parts.exponent, right_parts.exponent
+        assert isinstance(left_exponent, int) and isinstance(right_exponent, int)
+        match operation:
+            case "+" | "-" | "mod":
+                precision = max(self.root.adjusted(), right.adjusted()) - min(left_exponent, right_exponent) + 2
+            case "*":
+                precision = len(left_parts.digits) + len(right_parts.digits) + 2
+            case "/":
+                # Four times the divisor's coefficient length bounds its factors of two and five.
+                precision = max(
+                    len(left_parts.digits) + 4 * len(right_parts.digits) + 2,
+                    self.root.adjusted() - right.adjusted() + len(right_parts.digits) + 2,
+                )
+            case _:
+                raise FHIRPathError(f"Unsupported Decimal operation: {operation}")
+        with localcontext() as context:
+            context.prec = max(context.prec, precision)
+            match operation:
+                case "+":
+                    return self.root + right
+                case "-":
+                    return self.root - right
+                case "*":
+                    return self.root * right
+                case "/":
+                    return self.root / right
+                case _:
+                    return self.root % right
+
+    def scaled(self, numerator: Decimal, denominator: Decimal = Decimal(1)) -> Decimal:
+        """Scale a magnitude using the same precision policy as scalar arithmetic."""
+        product = self.arithmetic("*", numerator) if numerator != 1 else self.root
+        return type(self).model_validate(product).arithmetic("/", denominator) if denominator != 1 else product
+
     def rounded(self, precision: int) -> Decimal:
         """Round fractional places without losing integer digits to the ambient context."""
         if precision < 0:

@@ -35,12 +35,19 @@ untyped definitions. It requires all 87 callable function names to return from a
 least one actual invocation in the native evaluator. It runs the complete YAML
 corpus and a native identity-preserving exclusion probe. The other 24 registry
 entries describe operators or internal operator aliases. This checks dispatch
-coverage; it does not claim that every assertion or edge case passes.
+coverage; it does not claim that every assertion or edge case passes. The same
+audit discovers all five upstream unit-conversion families and exercises every
+pair, including plural calendar aliases, with native precision-aware round trips.
 
 Numeric functions preserve strict native output types: Integer `abs()` stays an
 Integer, Decimal `abs()` retains every digit, and `round()` preserves the integer
 part independently of the caller's Decimal context. Variadic `coalesce()` has no
 fixed upper argument limit and the fluent form does not render arguments as text.
+Finite Decimal arithmetic and unit scaling expand local precision as needed;
+nonterminating division remains a Decimal approximation. Quantity negation and
+rendering preserve long magnitudes. Native temporal conversion and fractional
+arithmetic retain submicrosecond precision and do not collapse distinct times
+under a caller's low Decimal precision.
 
 ## Reproducible audit evidence
 

@@ -214,9 +214,13 @@ class QuantityValue(BaseModel):
         if unit == self.unit:
             return self
         if self.unit == "year" and unit == "month":
-            return self.model_validate({"value": self.value * 12, "unit": unit})
+            return self.model_validate(
+                {"value": DecimalValue.model_validate(self.value).scaled(Decimal(12)), "unit": unit}
+            )
         if self.unit == "month" and unit == "year":
-            return self.model_validate({"value": self.value / 12, "unit": unit})
+            return self.model_validate(
+                {"value": DecimalValue.model_validate(self.value).scaled(Decimal(1), Decimal(12)), "unit": unit}
+            )
         source_unit = self.unit
         target_unit = unit
         source = QuantityUnit.from_code(source_unit)
@@ -227,7 +231,9 @@ class QuantityValue(BaseModel):
             source, target = QuantityUnit.from_code(source_unit), QuantityUnit.from_code(target_unit)
         if source.dimensions != target.dimensions:
             return None
-        return self.model_validate({"value": self.value * source.factor / target.factor, "unit": unit})
+        return self.model_validate(
+            {"value": DecimalValue.model_validate(self.value).scaled(source.factor, target.factor), "unit": unit}
+        )
 
     def comparable(self, other: QuantityValue, *, equivalent: bool = False) -> bool:
         """Require compatible dimensions and respect calendar-versus-definite units."""
@@ -294,7 +300,7 @@ class QuantityValue(BaseModel):
                     left, right = self.convert_to(unit), other.convert_to(unit)
                     if left is None or right is None:
                         return None
-                    value = left.value + right.value if operator == "+" else left.value - right.value
+                    value = DecimalValue.model_validate(left.value).arithmetic(operator, right.value)
                     return self.model_validate({"value": value, "unit": unit})
                 case "*" | "/":
                     if operator == "/" and other.value == 0:
@@ -304,7 +310,7 @@ class QuantityValue(BaseModel):
                         .combined(UnitTerms.from_code(other.unit), divide=operator == "/")
                         .code()
                     )
-                    value = self.value * other.value if operator == "*" else self.value / other.value
+                    value = DecimalValue.model_validate(self.value).arithmetic(operator, other.value)
                     return self.model_validate({"value": value, "unit": unit})
                 case _:
                     raise FHIRPathError("Quantity arithmetic supports +, -, * and / only")
@@ -317,11 +323,13 @@ class QuantityValue(BaseModel):
 
     def negated(self) -> Self:
         """Unary negation retains the exact validated unit."""
-        return self.model_copy(update={"value": -self.value})
+        return self.model_copy(update={"value": self.value.copy_negate()})
 
     @override
     def __str__(self) -> str:
-        number = format(self.value.normalize(), "f")
+        number = format(self.value, "f")
+        if "." in number:
+            number = number.rstrip("0").rstrip(".")
         return f"{number} '{self.unit}'"
 
 

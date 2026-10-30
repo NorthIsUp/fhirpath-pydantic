@@ -8,6 +8,7 @@ from typing import Literal, Self, override
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from fhirpath_pydantic.decimal_value import DecimalValue
 from fhirpath_pydantic.quantities import QuantityUnit, QuantityValue
 from fhirpath_pydantic.types import FHIRPathError, Value
 
@@ -87,6 +88,12 @@ class TemporalValue(BaseModel):
                     parts["offset_minutes"] = (1 if offset[0] == "+" else -1) * (hours * 60 + minutes)
         return cls.model_validate(parts)
 
+    @staticmethod
+    def native_second(value: datetime | time) -> Decimal:
+        """Read native seconds and microseconds without applying the caller's Decimal precision."""
+        coefficient = Decimal(value.second * 1_000_000 + value.microsecond)
+        return DecimalValue.model_validate(coefficient).scaled(Decimal("0.000001"))
+
     @classmethod
     def from_value(cls, value: Value) -> Self | None:
         """Use native components without formatting and reparsing Python values."""
@@ -102,7 +109,7 @@ class TemporalValue(BaseModel):
                     day=value.day,
                     hour=value.hour,
                     minute=value.minute,
-                    second=Decimal(value.second) + Decimal(value.microsecond) / 1_000_000,
+                    second=cls.native_second(value),
                     offset_minutes=int(offset.total_seconds() / 60) if offset is not None else None,
                 )
             case date():
@@ -113,7 +120,7 @@ class TemporalValue(BaseModel):
                     kind="Time",
                     hour=value.hour,
                     minute=value.minute,
-                    second=Decimal(value.second) + Decimal(value.microsecond) / 1_000_000,
+                    second=cls.native_second(value),
                     offset_minutes=int(offset.total_seconds() / 60) if offset is not None else None,
                 )
             case _:
@@ -126,10 +133,11 @@ class TemporalValue(BaseModel):
             return date(self.year, self.month, self.day)
         if self.second is None:
             return self
-        if self.second * 1_000_000 != (self.second * 1_000_000).to_integral_value():
+        microseconds = DecimalValue.model_validate(self.second).scaled(Decimal(1_000_000))
+        if microseconds != microseconds.to_integral_value():
             return self
         second = int(self.second)
-        microsecond = int((self.second - second) * 1_000_000)
+        microsecond = int(microseconds) - second * 1_000_000
         if self.kind == "Time" and self.hour is not None and self.minute is not None:
             return time(self.hour, self.minute, second, microsecond, tzinfo=zone)
         if (
@@ -150,18 +158,23 @@ class TemporalValue(BaseModel):
             raise FHIRPathError("Temporal arithmetic requires a calendar duration or seconds/milliseconds")
         if self.kind == "Time" and unit in {"year", "month", "week", "day"}:
             raise FHIRPathError("Time arithmetic requires hours, minutes, seconds or milliseconds")
-        amount = -quantity.value if subtract else quantity.value
+        amount = quantity.value.copy_negate() if subtract else quantity.value
         if unit not in {"second", "millisecond"}:
             amount = Decimal(int(amount))
         if unit == "week":
-            amount *= 7
+            amount = DecimalValue.model_validate(amount).scaled(Decimal(7))
             unit = "day"
         precisions = ("year", "month", "day", "hour", "minute", "second")
         precision = precisions[(3 if self.kind == "Time" else 0) + len(self.components()) - 1]
         source_scale = QuantityUnit.from_code(unit).factor
         target_scale = QuantityUnit.from_code(precision).factor
         if source_scale < target_scale:
-            amount = amount / 12 if precision == "year" and unit == "month" else amount * source_scale / target_scale
+            conversion = DecimalValue.model_validate(amount)
+            amount = (
+                conversion.scaled(Decimal(1), Decimal(12))
+                if precision == "year" and unit == "month"
+                else conversion.scaled(source_scale, target_scale)
+            )
             if precision != "second":
                 amount = Decimal(int(amount))
             unit = precision
@@ -176,11 +189,15 @@ class TemporalValue(BaseModel):
                 month += 1
                 anchor = anchor.replace(year=year, month=month, day=min(anchor.day, monthrange(year, month)[1]))
             else:
-                seconds = amount * QuantityUnit.from_code(unit).factor
+                seconds = DecimalValue.model_validate(amount).scaled(QuantityUnit.from_code(unit).factor)
                 if second is not None:
-                    total = second + seconds
-                    minutes = int((total / 60).to_integral_value(rounding=ROUND_FLOOR))
-                    second = total - minutes * 60
+                    total = DecimalValue.model_validate(second).arithmetic("+", seconds)
+                    minutes = int(
+                        DecimalValue.model_validate(total)
+                        .arithmetic("/", Decimal(60))
+                        .to_integral_value(rounding=ROUND_FLOOR)
+                    )
+                    second = DecimalValue.model_validate(total).arithmetic("-", Decimal(minutes * 60))
                     anchor += timedelta(minutes=minutes)
                 else:
                     anchor += timedelta(seconds=int(seconds))

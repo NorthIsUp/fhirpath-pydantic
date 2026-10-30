@@ -389,3 +389,27 @@ def test_rounding_does_not_depend_on_or_mutate_ambient_precision() -> None:
         context.prec = 6
         assert evaluate(value, "round(3)") == [Decimal("123456789012345678901234567890.556")]
         assert context.prec == 6
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("-$this", Decimal("-123456789012345678901234567890.123456789")),
+        ("$this + 1", Decimal("123456789012345678901234567891.123456789")),
+        ("$this - 1", Decimal("123456789012345678901234567889.123456789")),
+        ("$this * 2", Decimal("246913578024691357802469135780.246913578")),
+        ("$this / 2", Decimal("61728394506172839450617283945.0617283945")),
+        ("$this mod 1", Decimal("0.123456789")),
+    ],
+)
+def test_long_decimal_operations_are_lossless(expression: str, expected: Decimal) -> None:
+    """Existing arithmetic operators handle long native Decimal values consistently."""
+    value = Decimal("123456789012345678901234567890.123456789")
+    assert compile(expression, output_type=Decimal)(value) == [expected]
+
+
+def test_terminating_decimal_division_keeps_all_places() -> None:
+    """A finite quotient is not rounded merely because its denominator has many digits."""
+    denominator = Decimal(2**100)
+    expected = Decimal(f"{5**100}e-100")
+    assert compile("$this / %denominator", output_type=Decimal)(Decimal(1), {"denominator": denominator}) == [expected]

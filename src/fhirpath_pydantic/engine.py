@@ -328,7 +328,9 @@ class State(BaseModel):
                     quantity = QuantityValue.operand(native)
                     return items(quantity.negated() if quantity is not None and node.tokens[0] == "-" else quantity)
                 value = native if isinstance(native, int) and not isinstance(native, bool) else number(native)
-                return items(-value if node.tokens[0] == "-" else value)
+                return items(
+                    (-value if isinstance(value, int) else value.copy_negate()) if node.tokens[0] == "-" else value
+                )
             case "IndexerExpression":
                 collection = evaluate_node(node.children[0], focus, self)
                 index = evaluate_node(node.children[1], focus, self)
