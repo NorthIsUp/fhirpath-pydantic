@@ -1,4 +1,4 @@
-# Generated from FHIRPath.g4 by ANTLR 4.13.0
+# Generated from grammar/FHIRPath.g4 by ANTLR 4.13.2
 # encoding: utf-8
 from antlr4 import *
 from io import StringIO
@@ -193,7 +193,7 @@ class FHIRPathParser ( Parser ):
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)
-        self.checkVersion("4.13.0")
+        self.checkVersion("4.13.2")
         self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA, self.sharedContextCache)
         self._predicates = None
 
@@ -216,14 +216,6 @@ class FHIRPathParser ( Parser ):
 
         def getRuleIndex(self):
             return FHIRPathParser.RULE_entireExpression
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterEntireExpression" ):
-                listener.enterEntireExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitEntireExpression" ):
-                listener.exitEntireExpression(self)
 
 
 
@@ -276,14 +268,6 @@ class FHIRPathParser ( Parser ):
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterIndexerExpression" ):
-                listener.enterIndexerExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitIndexerExpression" ):
-                listener.exitIndexerExpression(self)
-
 
     class PolarityExpressionContext(ExpressionContext):
 
@@ -294,14 +278,6 @@ class FHIRPathParser ( Parser ):
         def expression(self):
             return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterPolarityExpression" ):
-                listener.enterPolarityExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitPolarityExpression" ):
-                listener.exitPolarityExpression(self)
 
 
     class AdditiveExpressionContext(ExpressionContext):
@@ -317,14 +293,6 @@ class FHIRPathParser ( Parser ):
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterAdditiveExpression" ):
-                listener.enterAdditiveExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitAdditiveExpression" ):
-                listener.exitAdditiveExpression(self)
-
 
     class MultiplicativeExpressionContext(ExpressionContext):
 
@@ -338,14 +306,6 @@ class FHIRPathParser ( Parser ):
             else:
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterMultiplicativeExpression" ):
-                listener.enterMultiplicativeExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitMultiplicativeExpression" ):
-                listener.exitMultiplicativeExpression(self)
 
 
     class UnionExpressionContext(ExpressionContext):
@@ -361,14 +321,6 @@ class FHIRPathParser ( Parser ):
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterUnionExpression" ):
-                listener.enterUnionExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitUnionExpression" ):
-                listener.exitUnionExpression(self)
-
 
     class OrExpressionContext(ExpressionContext):
 
@@ -382,14 +334,6 @@ class FHIRPathParser ( Parser ):
             else:
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterOrExpression" ):
-                listener.enterOrExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitOrExpression" ):
-                listener.exitOrExpression(self)
 
 
     class AndExpressionContext(ExpressionContext):
@@ -405,14 +349,6 @@ class FHIRPathParser ( Parser ):
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterAndExpression" ):
-                listener.enterAndExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitAndExpression" ):
-                listener.exitAndExpression(self)
-
 
     class MembershipExpressionContext(ExpressionContext):
 
@@ -426,14 +362,6 @@ class FHIRPathParser ( Parser ):
             else:
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterMembershipExpression" ):
-                listener.enterMembershipExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitMembershipExpression" ):
-                listener.exitMembershipExpression(self)
 
 
     class InequalityExpressionContext(ExpressionContext):
@@ -449,14 +377,6 @@ class FHIRPathParser ( Parser ):
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterInequalityExpression" ):
-                listener.enterInequalityExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitInequalityExpression" ):
-                listener.exitInequalityExpression(self)
-
 
     class InvocationExpressionContext(ExpressionContext):
 
@@ -470,14 +390,6 @@ class FHIRPathParser ( Parser ):
         def invocation(self):
             return self.getTypedRuleContext(FHIRPathParser.InvocationContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterInvocationExpression" ):
-                listener.enterInvocationExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitInvocationExpression" ):
-                listener.exitInvocationExpression(self)
 
 
     class EqualityExpressionContext(ExpressionContext):
@@ -493,14 +405,6 @@ class FHIRPathParser ( Parser ):
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterEqualityExpression" ):
-                listener.enterEqualityExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitEqualityExpression" ):
-                listener.exitEqualityExpression(self)
-
 
     class ImpliesExpressionContext(ExpressionContext):
 
@@ -515,14 +419,6 @@ class FHIRPathParser ( Parser ):
                 return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,i)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterImpliesExpression" ):
-                listener.enterImpliesExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitImpliesExpression" ):
-                listener.exitImpliesExpression(self)
-
 
     class TermExpressionContext(ExpressionContext):
 
@@ -533,14 +429,6 @@ class FHIRPathParser ( Parser ):
         def term(self):
             return self.getTypedRuleContext(FHIRPathParser.TermContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterTermExpression" ):
-                listener.enterTermExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitTermExpression" ):
-                listener.exitTermExpression(self)
 
 
     class TypeExpressionContext(ExpressionContext):
@@ -555,14 +443,6 @@ class FHIRPathParser ( Parser ):
         def typeSpecifier(self):
             return self.getTypedRuleContext(FHIRPathParser.TypeSpecifierContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterTypeExpression" ):
-                listener.enterTypeExpression(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitTypeExpression" ):
-                listener.exitTypeExpression(self)
 
 
 
@@ -850,14 +730,6 @@ class FHIRPathParser ( Parser ):
             return self.getTypedRuleContext(FHIRPathParser.ExternalConstantContext,0)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterExternalConstantTerm" ):
-                listener.enterExternalConstantTerm(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitExternalConstantTerm" ):
-                listener.exitExternalConstantTerm(self)
-
 
     class LiteralTermContext(TermContext):
 
@@ -868,14 +740,6 @@ class FHIRPathParser ( Parser ):
         def literal(self):
             return self.getTypedRuleContext(FHIRPathParser.LiteralContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterLiteralTerm" ):
-                listener.enterLiteralTerm(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitLiteralTerm" ):
-                listener.exitLiteralTerm(self)
 
 
     class ParenthesizedTermContext(TermContext):
@@ -888,14 +752,6 @@ class FHIRPathParser ( Parser ):
             return self.getTypedRuleContext(FHIRPathParser.ExpressionContext,0)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterParenthesizedTerm" ):
-                listener.enterParenthesizedTerm(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitParenthesizedTerm" ):
-                listener.exitParenthesizedTerm(self)
-
 
     class InvocationTermContext(TermContext):
 
@@ -906,14 +762,6 @@ class FHIRPathParser ( Parser ):
         def invocation(self):
             return self.getTypedRuleContext(FHIRPathParser.InvocationContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterInvocationTerm" ):
-                listener.enterInvocationTerm(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitInvocationTerm" ):
-                listener.exitInvocationTerm(self)
 
 
 
@@ -991,14 +839,6 @@ class FHIRPathParser ( Parser ):
         def TIME(self):
             return self.getToken(FHIRPathParser.TIME, 0)
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterTimeLiteral" ):
-                listener.enterTimeLiteral(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitTimeLiteral" ):
-                listener.exitTimeLiteral(self)
-
 
     class NullLiteralContext(LiteralContext):
 
@@ -1006,14 +846,6 @@ class FHIRPathParser ( Parser ):
             super().__init__(parser)
             self.copyFrom(ctx)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterNullLiteral" ):
-                listener.enterNullLiteral(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitNullLiteral" ):
-                listener.exitNullLiteral(self)
 
 
     class DateTimeLiteralContext(LiteralContext):
@@ -1025,14 +857,6 @@ class FHIRPathParser ( Parser ):
         def DATETIME(self):
             return self.getToken(FHIRPathParser.DATETIME, 0)
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterDateTimeLiteral" ):
-                listener.enterDateTimeLiteral(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitDateTimeLiteral" ):
-                listener.exitDateTimeLiteral(self)
-
 
     class StringLiteralContext(LiteralContext):
 
@@ -1043,14 +867,6 @@ class FHIRPathParser ( Parser ):
         def STRING(self):
             return self.getToken(FHIRPathParser.STRING, 0)
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterStringLiteral" ):
-                listener.enterStringLiteral(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitStringLiteral" ):
-                listener.exitStringLiteral(self)
-
 
     class BooleanLiteralContext(LiteralContext):
 
@@ -1058,14 +874,6 @@ class FHIRPathParser ( Parser ):
             super().__init__(parser)
             self.copyFrom(ctx)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterBooleanLiteral" ):
-                listener.enterBooleanLiteral(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitBooleanLiteral" ):
-                listener.exitBooleanLiteral(self)
 
 
     class NumberLiteralContext(LiteralContext):
@@ -1077,14 +885,6 @@ class FHIRPathParser ( Parser ):
         def NUMBER(self):
             return self.getToken(FHIRPathParser.NUMBER, 0)
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterNumberLiteral" ):
-                listener.enterNumberLiteral(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitNumberLiteral" ):
-                listener.exitNumberLiteral(self)
-
 
     class QuantityLiteralContext(LiteralContext):
 
@@ -1095,14 +895,6 @@ class FHIRPathParser ( Parser ):
         def quantity(self):
             return self.getTypedRuleContext(FHIRPathParser.QuantityContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterQuantityLiteral" ):
-                listener.enterQuantityLiteral(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitQuantityLiteral" ):
-                listener.exitQuantityLiteral(self)
 
 
 
@@ -1198,14 +990,6 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_externalConstant
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterExternalConstant" ):
-                listener.enterExternalConstant(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitExternalConstant" ):
-                listener.exitExternalConstant(self)
-
 
 
 
@@ -1264,14 +1048,6 @@ class FHIRPathParser ( Parser ):
             self.copyFrom(ctx)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterTotalInvocation" ):
-                listener.enterTotalInvocation(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitTotalInvocation" ):
-                listener.exitTotalInvocation(self)
-
 
     class ThisInvocationContext(InvocationContext):
 
@@ -1280,14 +1056,6 @@ class FHIRPathParser ( Parser ):
             self.copyFrom(ctx)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterThisInvocation" ):
-                listener.enterThisInvocation(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitThisInvocation" ):
-                listener.exitThisInvocation(self)
-
 
     class IndexInvocationContext(InvocationContext):
 
@@ -1295,14 +1063,6 @@ class FHIRPathParser ( Parser ):
             super().__init__(parser)
             self.copyFrom(ctx)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterIndexInvocation" ):
-                listener.enterIndexInvocation(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitIndexInvocation" ):
-                listener.exitIndexInvocation(self)
 
 
     class FunctionInvocationContext(InvocationContext):
@@ -1315,14 +1075,6 @@ class FHIRPathParser ( Parser ):
             return self.getTypedRuleContext(FHIRPathParser.FunctnContext,0)
 
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterFunctionInvocation" ):
-                listener.enterFunctionInvocation(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitFunctionInvocation" ):
-                listener.exitFunctionInvocation(self)
-
 
     class MemberInvocationContext(InvocationContext):
 
@@ -1333,14 +1085,6 @@ class FHIRPathParser ( Parser ):
         def identifier(self):
             return self.getTypedRuleContext(FHIRPathParser.IdentifierContext,0)
 
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterMemberInvocation" ):
-                listener.enterMemberInvocation(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitMemberInvocation" ):
-                listener.exitMemberInvocation(self)
 
 
 
@@ -1415,14 +1159,6 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_functn
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterFunctn" ):
-                listener.enterFunctn(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitFunctn" ):
-                listener.exitFunctn(self)
-
 
 
 
@@ -1472,14 +1208,6 @@ class FHIRPathParser ( Parser ):
 
         def getRuleIndex(self):
             return FHIRPathParser.RULE_paramList
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterParamList" ):
-                listener.enterParamList(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitParamList" ):
-                listener.exitParamList(self)
 
 
 
@@ -1531,14 +1259,6 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_quantity
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterQuantity" ):
-                listener.enterQuantity(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitQuantity" ):
-                listener.exitQuantity(self)
-
 
 
 
@@ -1587,14 +1307,6 @@ class FHIRPathParser ( Parser ):
 
         def getRuleIndex(self):
             return FHIRPathParser.RULE_unit
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterUnit" ):
-                listener.enterUnit(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitUnit" ):
-                listener.exitUnit(self)
 
 
 
@@ -1645,14 +1357,6 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_dateTimePrecision
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterDateTimePrecision" ):
-                listener.enterDateTimePrecision(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitDateTimePrecision" ):
-                listener.exitDateTimePrecision(self)
-
 
 
 
@@ -1689,14 +1393,6 @@ class FHIRPathParser ( Parser ):
 
         def getRuleIndex(self):
             return FHIRPathParser.RULE_pluralDateTimePrecision
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterPluralDateTimePrecision" ):
-                listener.enterPluralDateTimePrecision(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitPluralDateTimePrecision" ):
-                listener.exitPluralDateTimePrecision(self)
 
 
 
@@ -1738,14 +1434,6 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_typeSpecifier
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterTypeSpecifier" ):
-                listener.enterTypeSpecifier(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitTypeSpecifier" ):
-                listener.exitTypeSpecifier(self)
-
 
 
 
@@ -1782,14 +1470,6 @@ class FHIRPathParser ( Parser ):
 
         def getRuleIndex(self):
             return FHIRPathParser.RULE_qualifiedIdentifier
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterQualifiedIdentifier" ):
-                listener.enterQualifiedIdentifier(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitQualifiedIdentifier" ):
-                listener.exitQualifiedIdentifier(self)
 
 
 
@@ -1839,14 +1519,6 @@ class FHIRPathParser ( Parser ):
 
         def getRuleIndex(self):
             return FHIRPathParser.RULE_identifier
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterIdentifier" ):
-                listener.enterIdentifier(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitIdentifier" ):
-                listener.exitIdentifier(self)
 
 
 

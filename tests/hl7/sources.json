@@ -1,0 +1,275 @@
+{
+  "revision": "db9fce391702b896c4e340dcb035ef44feb57093",
+  "releases": [
+    "r4",
+    "r4b",
+    "r5"
+  ],
+  "files": [
+    {
+      "local_path": "tests/hl7/LICENSE.txt",
+      "repository_path": "LICENSE.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "local_path": "tests/hl7/r4/tests.xml",
+      "repository_path": "r4/fhirpath/tests-fhir-r4.xml",
+      "sha256": "593340922b0796e702182992e7112c616b02cbd1bfa04d3cf261e29b046c1572"
+    },
+    {
+      "local_path": "tests/hl7/r4/appointment-examplereq.json",
+      "repository_path": "r4/appointment-examplereq.json",
+      "sha256": "0bc59eff908363c1183932e15738e288e1fb7dabb643dcdea6cf62e1d9478864"
+    },
+    {
+      "local_path": "tests/hl7/r4/bundle-document-ips.json",
+      "repository_path": "r4/bundle-document-ips.json",
+      "sha256": "8339f2e3de62f81a14c3b8036df7ddc7378c4e6d1e11c81f049db134c6648e83"
+    },
+    {
+      "local_path": "tests/hl7/r4/codesystem-example.xml",
+      "repository_path": "r4/codesystem-example.xml",
+      "sha256": "da56c88f1e329359b9e7eb376c84ddcd70abe97f0f932ee8a7b8b20cb55e8363"
+    },
+    {
+      "local_path": "tests/hl7/r4/explanationofbenefit-example.json",
+      "repository_path": "r4/explanationofbenefit-example.json",
+      "sha256": "fb6cdaca18a18e2c2b26e93cbe16709c0ff5ca9a15b7725531fa576d5034f899"
+    },
+    {
+      "local_path": "tests/hl7/r4/observation-example.xml",
+      "repository_path": "r4/observation-example.xml",
+      "sha256": "80a32392067c65612f0fbffcd94e3832d5f21c356cf1ff7a61ded1c8032ff360"
+    },
+    {
+      "local_path": "tests/hl7/r4/parameters-example-decimals.xml",
+      "repository_path": "r4/parameters-example-decimals.xml",
+      "sha256": "bbc2db206494abc5abf29a7e7760ba70602d124009be2d992df88cb056078b48"
+    },
+    {
+      "local_path": "tests/hl7/r4/parameters-example-quantities.xml",
+      "repository_path": "r4/parameters-example-quantities.xml",
+      "sha256": "9e8dcdd7d7796df4ed36343f93a1bc855213b3b25e3ae1da5a56708c675ef9cb"
+    },
+    {
+      "local_path": "tests/hl7/r4/parameters-example-types.xml",
+      "repository_path": "r4/parameters-example-types.xml",
+      "sha256": "38dc7daa23a7bc6117b59008a47daa737a9e031ecdccf01d9190e5697d62baff"
+    },
+    {
+      "local_path": "tests/hl7/r4/parameters-quantity-unit-text.xml",
+      "repository_path": "r4/parameters-quantity-unit-text.xml",
+      "sha256": "837a174a2bd809213a89396fd3e5a981143e1a6e217aaf97fef50ea47900766c"
+    },
+    {
+      "local_path": "tests/hl7/r4/patient-container-example.json",
+      "repository_path": "r4/patient-container-example.json",
+      "sha256": "cec75206b31d2090285908050ab8c8bd11237008bcc36d8a6e6326b9ced4b884"
+    },
+    {
+      "local_path": "tests/hl7/r4/patient-example-period.xml",
+      "repository_path": "r4/patient-example-period.xml",
+      "sha256": "3d02211271484cf069fb4c2ca72ad27a9179b24e60d7b3d292825ff097bd27cd"
+    },
+    {
+      "local_path": "tests/hl7/r4/patient-example.xml",
+      "repository_path": "r4/patient-example.xml",
+      "sha256": "606695d227a8669dc6ef2669957b1684990b2e127a82592008642c50359324fd"
+    },
+    {
+      "local_path": "tests/hl7/r4/patient-name-extensions.json",
+      "repository_path": "r4/patient-name-extensions.json",
+      "sha256": "25d3b1fa540fc4586bee49d5b56106a967d6339461a802fb5e0fa5bb8469b827"
+    },
+    {
+      "local_path": "tests/hl7/r4/questionnaire-example.xml",
+      "repository_path": "r4/questionnaire-example.xml",
+      "sha256": "06e56aa1ab4c206fad6159f5fa8321b7d8a7666ce682ac5be128ff5ac6113048"
+    },
+    {
+      "local_path": "tests/hl7/r4/valueset-example-expansion.xml",
+      "repository_path": "r4/valueset-example-expansion.xml",
+      "sha256": "2fd28a9377eedfe9c0ff17a5d1756c40bc88b393a889853b75b883283a75919d"
+    },
+    {
+      "local_path": "tests/hl7/r4b/tests.xml",
+      "repository_path": "r4b/fhirpath/tests-fhir-r4b.xml",
+      "sha256": "bc374ca07e46e420772da700c150490f86b4da264978e73eb937eddf4639a32a"
+    },
+    {
+      "local_path": "tests/hl7/r4b/appointment-examplereq.json",
+      "repository_path": "r4b/appointment-examplereq.json",
+      "sha256": "0bc59eff908363c1183932e15738e288e1fb7dabb643dcdea6cf62e1d9478864"
+    },
+    {
+      "local_path": "tests/hl7/r4b/bundle-document-ips.json",
+      "repository_path": "r4b/bundle-document-ips.json",
+      "sha256": "8339f2e3de62f81a14c3b8036df7ddc7378c4e6d1e11c81f049db134c6648e83"
+    },
+    {
+      "local_path": "tests/hl7/r4b/codesystem-example.xml",
+      "repository_path": "r4b/codesystem-example.xml",
+      "sha256": "da56c88f1e329359b9e7eb376c84ddcd70abe97f0f932ee8a7b8b20cb55e8363"
+    },
+    {
+      "local_path": "tests/hl7/r4b/explanationofbenefit-example.json",
+      "repository_path": "r4b/explanationofbenefit-example.json",
+      "sha256": "fcf894b128abf71850adeb0f328b047d044108aa80e08159ab61c263ff358550"
+    },
+    {
+      "local_path": "tests/hl7/r4b/observation-example.xml",
+      "repository_path": "r4b/observation-example.xml",
+      "sha256": "80a32392067c65612f0fbffcd94e3832d5f21c356cf1ff7a61ded1c8032ff360"
+    },
+    {
+      "local_path": "tests/hl7/r4b/parameters-example-decimals.xml",
+      "repository_path": "r4b/parameters-example-decimals.xml",
+      "sha256": "bbc2db206494abc5abf29a7e7760ba70602d124009be2d992df88cb056078b48"
+    },
+    {
+      "local_path": "tests/hl7/r4b/parameters-example-quantities.xml",
+      "repository_path": "r4b/parameters-example-quantities.xml",
+      "sha256": "9e8dcdd7d7796df4ed36343f93a1bc855213b3b25e3ae1da5a56708c675ef9cb"
+    },
+    {
+      "local_path": "tests/hl7/r4b/parameters-example-types.xml",
+      "repository_path": "r4b/parameters-example-types.xml",
+      "sha256": "38dc7daa23a7bc6117b59008a47daa737a9e031ecdccf01d9190e5697d62baff"
+    },
+    {
+      "local_path": "tests/hl7/r4b/parameters-quantity-unit-text.xml",
+      "repository_path": "r4b/parameters-quantity-unit-text.xml",
+      "sha256": "837a174a2bd809213a89396fd3e5a981143e1a6e217aaf97fef50ea47900766c"
+    },
+    {
+      "local_path": "tests/hl7/r4b/patient-container-example.json",
+      "repository_path": "r4b/patient-container-example.json",
+      "sha256": "6492eadb0b8ac417cf8576588ce5e7c29da2b2e8e1451b5d704fc0c219340565"
+    },
+    {
+      "local_path": "tests/hl7/r4b/patient-example-period.xml",
+      "repository_path": "r4b/patient-example-period.xml",
+      "sha256": "3d02211271484cf069fb4c2ca72ad27a9179b24e60d7b3d292825ff097bd27cd"
+    },
+    {
+      "local_path": "tests/hl7/r4b/patient-example.xml",
+      "repository_path": "r4b/patient-example.xml",
+      "sha256": "606695d227a8669dc6ef2669957b1684990b2e127a82592008642c50359324fd"
+    },
+    {
+      "local_path": "tests/hl7/r4b/questionnaire-example.xml",
+      "repository_path": "r4b/questionnaire-example.xml",
+      "sha256": "06e56aa1ab4c206fad6159f5fa8321b7d8a7666ce682ac5be128ff5ac6113048"
+    },
+    {
+      "local_path": "tests/hl7/r4b/valueset-example-expansion.xml",
+      "repository_path": "r4b/valueset-example-expansion.xml",
+      "sha256": "2fd28a9377eedfe9c0ff17a5d1756c40bc88b393a889853b75b883283a75919d"
+    },
+    {
+      "local_path": "tests/hl7/r5/tests.xml",
+      "repository_path": "r5/fhirpath/tests-fhir-r5.xml",
+      "sha256": "29b40967c60abf3f3c798ec049315adafe6f5c285ff01fda78a57d415767f4ee"
+    },
+    {
+      "local_path": "tests/hl7/r5/appointment-examplereq.json",
+      "repository_path": "r5/appointment-examplereq.json",
+      "sha256": "7134d442ded22067c13684a3d628fb94aea8eb3c3e768d23c6e7b48a77ad5aff"
+    },
+    {
+      "local_path": "tests/hl7/r5/bundle-document-ips.json",
+      "repository_path": "r5/bundle-document-ips.json",
+      "sha256": "b16a06f623d077a95771c24824a35237520fb37aaced434ac6f1eaaa5f1e2c5f"
+    },
+    {
+      "local_path": "tests/hl7/r5/ccda.xml",
+      "repository_path": "r5/ccda.xml",
+      "sha256": "b22562523e88305178ced0b8c6f7b3d04f94c84de8202046d3287063b5eb1629"
+    },
+    {
+      "local_path": "tests/hl7/r5/codesystem-example.xml",
+      "repository_path": "r5/codesystem-example.xml",
+      "sha256": "da56c88f1e329359b9e7eb376c84ddcd70abe97f0f932ee8a7b8b20cb55e8363"
+    },
+    {
+      "local_path": "tests/hl7/r5/conceptmap-example.xml",
+      "repository_path": "r5/conceptmap-example.xml",
+      "sha256": "ae32441980c2d2e3e88fb63589f08cf3f3fe9fe7b99ee07fe73a87d0b54e1b2d"
+    },
+    {
+      "local_path": "tests/hl7/r5/diagnosticreport-eric.json",
+      "repository_path": "r5/diagnosticreport-eric.json",
+      "sha256": "32d6c908765127486047326c4abc978ae198d7da780e3483e2b05eaca3c87ca5"
+    },
+    {
+      "local_path": "tests/hl7/r5/explanationofbenefit-example.json",
+      "repository_path": "r5/explanationofbenefit-example.json",
+      "sha256": "fb6cdaca18a18e2c2b26e93cbe16709c0ff5ca9a15b7725531fa576d5034f899"
+    },
+    {
+      "local_path": "tests/hl7/r5/observation-example.xml",
+      "repository_path": "r5/observation-example.xml",
+      "sha256": "8335e52062b414b4577e3ec56d5a188a8ec58afa9070019493ae4de6357ffa66"
+    },
+    {
+      "local_path": "tests/hl7/r5/parameters-example-decimals.xml",
+      "repository_path": "r5/parameters-example-decimals.xml",
+      "sha256": "bbc2db206494abc5abf29a7e7760ba70602d124009be2d992df88cb056078b48"
+    },
+    {
+      "local_path": "tests/hl7/r5/parameters-example-html.xml",
+      "repository_path": "r5/parameters-example-html.xml",
+      "sha256": "ac7cd709d7606628e663112ae295bc5ba0fff1fc09819eaf0cd9a538459fcf03"
+    },
+    {
+      "local_path": "tests/hl7/r5/parameters-example-quantities.xml",
+      "repository_path": "r5/parameters-example-quantities.xml",
+      "sha256": "9e8dcdd7d7796df4ed36343f93a1bc855213b3b25e3ae1da5a56708c675ef9cb"
+    },
+    {
+      "local_path": "tests/hl7/r5/parameters-example-types.xml",
+      "repository_path": "r5/parameters-example-types.xml",
+      "sha256": "72c630f9b38dece1f6439771001f8368d9a0fa018852e37afaeed5010ebce553"
+    },
+    {
+      "local_path": "tests/hl7/r5/parameters-quantity-unit-text.xml",
+      "repository_path": "r5/parameters-quantity-unit-text.xml",
+      "sha256": "837a174a2bd809213a89396fd3e5a981143e1a6e217aaf97fef50ea47900766c"
+    },
+    {
+      "local_path": "tests/hl7/r5/patient-container-example.json",
+      "repository_path": "r5/patient-container-example.json",
+      "sha256": "cec75206b31d2090285908050ab8c8bd11237008bcc36d8a6e6326b9ced4b884"
+    },
+    {
+      "local_path": "tests/hl7/r5/patient-example-name.xml",
+      "repository_path": "r5/patient-example-name.xml",
+      "sha256": "792db7d9bef432fdea5e30089812486a1efc34206c88cb76933bc63f4ea08c0e"
+    },
+    {
+      "local_path": "tests/hl7/r5/patient-example-period.xml",
+      "repository_path": "r5/patient-example-period.xml",
+      "sha256": "3d02211271484cf069fb4c2ca72ad27a9179b24e60d7b3d292825ff097bd27cd"
+    },
+    {
+      "local_path": "tests/hl7/r5/patient-example.xml",
+      "repository_path": "r5/patient-example.xml",
+      "sha256": "606695d227a8669dc6ef2669957b1684990b2e127a82592008642c50359324fd"
+    },
+    {
+      "local_path": "tests/hl7/r5/patient-name-extensions.json",
+      "repository_path": "r5/patient-name-extensions.json",
+      "sha256": "25d3b1fa540fc4586bee49d5b56106a967d6339461a802fb5e0fa5bb8469b827"
+    },
+    {
+      "local_path": "tests/hl7/r5/questionnaire-example.xml",
+      "repository_path": "r5/questionnaire-example.xml",
+      "sha256": "2394428e574905eceaf7f580c0b2faf1c3bf5cdac42fdabc99e3b266065709a6"
+    },
+    {
+      "local_path": "tests/hl7/r5/valueset-example-expansion.xml",
+      "repository_path": "r5/valueset-example-expansion.xml",
+      "sha256": "2fd28a9377eedfe9c0ff17a5d1756c40bc88b393a889853b75b883283a75919d"
+    }
+  ]
+}

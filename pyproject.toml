@@ -9,16 +9,16 @@ description = "Native typed FHIRPath queries for Pydantic FHIR resources"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.14,<3.15"
-dependencies = ["antlr4-python3-runtime>=4.13,<4.14", "fhir.resources>=8.3,<9", "fhir-core>=1.1,<2", "pydantic>=2.12,<3", "pydantic-core>=2.41,<3"]
+dependencies = ["antlr4-python3-runtime==4.13.2", "fhir.resources>=8.3,<9", "fhir-core>=1.1,<2", "pydantic>=2.12,<3", "pydantic-core>=2.41,<3"]
 
 [dependency-groups]
-dev = ["pytest>=9,<10", "pytest-cov>=7,<8", "fhirpathpy==2.2.4", "pyyaml>=6,<7", "types-PyYAML>=6,<7", "ruff>=0.14", "ty>=0.0.89", "pyright>=1.1.400"]
+dev = ["lxml>=6,<7", "pytest>=9,<10", "pytest-cov>=7,<8", "fhirpathpy==2.2.4", "pyyaml>=6,<7", "types-PyYAML>=6,<7", "ruff>=0.14", "ty>=0.0.89", "pyright>=1.1.400"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fhirpath_pydantic"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests/native", "tests/cases", "tests/resources/*.json", "typings", "README.md", "LICENSE.md", "pyproject.toml", "mise.toml", "hk.pkl", "uv.lock"]
+include = ["src", "grammar", "tools", "tests/native", "tests/cases", "tests/resources/*.json", "tests/hl7", "typings", "README.md", "COMPATIBILITY.md", "LICENSE.md", "pyproject.toml", "mise.toml", "hk.pkl", "uv.lock"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/native"]
@@ -29,7 +29,7 @@ addopts = "-ra --confcutdir=tests/native"
 python-version = "3.14"
 extra-paths = ["typings"]
 [tool.ty.src]
-include = ["src", "tests/native"]
+include = ["src", "tests/native", "tools"]
 exclude = ["src/fhirpath_pydantic/_grammar/*.py"]
 [tool.ty.analysis]
 respect-type-ignore-comments = false
@@ -39,7 +39,7 @@ all = "error"
 [tool.pyright]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
-include = ["src/fhirpath_pydantic", "tests/native"]
+include = ["src/fhirpath_pydantic", "tests/native", "tools"]
 exclude = ["src/fhirpath_pydantic/_grammar"]
 stubPath = "typings"
 enableTypeIgnoreComments = false

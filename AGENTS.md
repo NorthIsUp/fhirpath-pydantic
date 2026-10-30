@@ -1,7 +1,8 @@
 # fhirpath-pydantic
 
-This is our fork. Work directly on its default branch and push to `origin`; do
-not open pull requests. Keep the `upstream` remote read-only.
+This is our fork. Implement on a dedicated worktree branch and commit completed
+changes before handing work back. Land verified commits on the default branch
+through `origin` without pull requests. Keep the `upstream` remote read-only.
 
 Implement analogous fhirpathpy feature parity for native `fhir.resources` models.
 Use idiomatic Pydantic models, `RootModel`, model/field validators and validated

@@ -143,3 +143,17 @@ def test_invalid_temporal_arithmetic(expression: str) -> None:
     """Noncalendar coarse units, incompatible dimensions and overflow are errors."""
     with pytest.raises(ValueError):
         evaluate(None, expression)
+
+
+@pytest.mark.parametrize("text", ["2018T", "2018-02T", "2018-02-02T"])
+def test_date_only_datetime_literals(text: str) -> None:
+    """A trailing T explicitly retains the DateTime type at partial date precision."""
+    assert evaluate(None, f"@{text}.type().name") == ["DateTime"]
+    assert evaluate(None, f"@{text}.toString()") == [text]
+
+
+@pytest.mark.parametrize("text", ["2018T12", "2018-02T12:30", "2018TZ", "2018-02-02TZ"])
+def test_datetime_literal_precision_holes_are_rejected(text: str) -> None:
+    """Lexical date/time tokens must still satisfy Pydantic precision invariants."""
+    with pytest.raises(ValueError):
+        evaluate(None, f"@{text}")

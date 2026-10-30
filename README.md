@@ -61,6 +61,9 @@ so a query declared as `str` cannot silently convert a Boolean or number. For
 custom result schemas, `CompiledQuery(node=..., adapter=TypeAdapter[...](...))`
 accepts an already-built adapter, including an `Annotated` type with validators.
 
+See [COMPATIBILITY.md](COMPATIBILITY.md) for measured feature coverage, audit
+counts and remaining gaps.
+
 ## Supported scope
 
 Version 0.1 implements native navigation, aliases, choices, primitive extensions,
@@ -81,8 +84,8 @@ values retain Python temporal types. Missing precision produces an indeterminate
 comparison where required. Calendar arithmetic clamps month-end dates, retains
 partial precision, and preserves fractional seconds. Definite UCUM durations above
 seconds are rejected in temporal arithmetic; use calendar units such as `day`. `literal(TemporalValue(kind="DateTime", year=2018))`
-works without query text; the inherited grammar currently rejects date-only
-DateTime literals with a trailing `T`.
+works without query text. Text literals also support partial DateTimes such as
+`@2018T`, `@2018-02T`, and `@2018-02-02T`.
 
 Quantity results use the frozen `QuantityValue` Pydantic model. Known conversions
 cover mass, length, volume, time and their products/quotients. Other UCUM codes
@@ -134,3 +137,11 @@ rejected by FHIR validation. Upstream-disabled cases remain visible. Error cases
 are actually evaluated; an unsupported feature never satisfies an expected error.
 The audit compares native models, quantities and temporal values with their
 analogous expected values rather than requiring JSON-shaped results.
+
+The source grammar is `grammar/FHIRPath.g4`. `mise run grammar` regenerates the
+Python lexer and parser using the official ANTLR 4.13.2 JAR, verified by SHA-256.
+Regeneration requires Java on the mise environment PATH.
+
+`mise run parity:hl7` audits the complete pinned official R4/R4B/R5 XML corpora
+using native FHIR model parsing. It records every assertion, including unsupported
+configurations and rejected inputs, in `dist/hl7-report.json`.

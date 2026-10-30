@@ -27,3 +27,15 @@ run = "uv run python tests/native/conformance.py"
 [tasks.profile]
 description = "Profile compiled native traversal on a synthetic Patient"
 run = "uv run python tests/native/profile_runtime.py"
+
+[tasks.grammar]
+description = "Regenerate the native Python parser from the pinned ANTLR grammar (requires Java)"
+run = "uv run python tools/generate_grammar.py"
+
+[tasks."fixtures:hl7"]
+description = "Fetch pinned official HL7 R4, R4B and R5 test corpora and every referenced input"
+run = "uv run python tools/fetch_hl7.py"
+
+[tasks."parity:hl7"]
+description = "Audit every pinned official HL7 R4, R4B and R5 assertion against native resources"
+run = "uv run python tests/native/hl7_conformance.py"
