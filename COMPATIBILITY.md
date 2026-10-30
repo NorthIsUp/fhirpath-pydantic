@@ -86,7 +86,30 @@ bind after arithmetic and before union or comparison, as specified by the
 The synthetic `Functions` resource also lacks native FHIR choice metadata for
 nested extension values. Its native R4B/R5 equivalent is covered in
 `test_boundaries.py`, including chained extension choice values and ids.
-The outstanding failures still require case-by-case review.
+All 44 result/error differences have individual executable native expectations in
+`test_reviewed_differences.py`. The tests evaluate every original case, check each
+failed expression against its reviewed result or domain error, and require the
+exact occurrence counts and raw status totals. A fixed evaluation clock makes
+microsecond-format decisions reproducible. These checks do not rewrite fixtures,
+reclassify audit results, or claim full HL7 conformance.
+
+| Reviewed behavior | YAML differences | HL7 differences | Native decision |
+| --- | ---: | ---: | --- |
+| Calendar versus mean UCUM year | 1 | 0 | Equality and inequality are indeterminate without explicit conversion |
+| Timestamp formatting | 2 | 0 | Preserve native microseconds |
+| Type-operator precedence | 3 | 0 | Bind type tests before union and comparison |
+| FHIR primitive identity | 1 | 3 | Retain declared id/code identity separately from System.String |
+| Date and fractional-second arithmetic | 1 | 2 | Support native calendar addition and preserve fractions |
+| Synthetic extension choice metadata | 1 | 0 | Use validated native R4B/R5 extensions; both analogues are regression-tested |
+| Partial date comparison | 3 | 0 | Missing time precision remains indeterminate |
+| Unknown System.Patient target | 1 | 3 | Raise a domain error; FHIR.Patient is the valid target |
+| Native Time offsets | 0 | 6 | Accept representable offsets as an explicit extension |
+| Unanchored calendar comparisons | 0 | 9 | Apply current FHIRPath conversion factors |
+| Native choice field aliases | 0 | 3 | Expose valueQuantity alongside the value choice group |
+| Distinct result ordering | 0 | 5 | Preserve first occurrences; normative order is unspecified |
+
+Rejected native inputs and unsupported newer features remain separate audit
+categories; the review gate does not turn them into successful evaluations.
 
 The newer official corpus also exercises features absent from the 2.2.4 baseline,
 including `lowBoundary`, `highBoundary`, `precision`, `sort`, `defineVariable`,
