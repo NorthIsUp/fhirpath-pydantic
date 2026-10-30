@@ -28,6 +28,17 @@ All test filenames above are under `tests/native/`. Family coverage means the
 feature exists and has regression coverage; it is not a claim that every edge
 case in that family passes the official suites.
 
+## Typed input boundaries
+
+Public evaluation, compiled query methods, context bindings and fluent literals
+accept `InputValue`, whose sequence and mapping arms are readonly and covariant.
+A `list[Patient]` does not need a cast to `list[Value]`. Pydantic normalizes tuples
+and readonly mappings into internal container shapes. Native resource objects
+retain identity and are neither iterated as collections nor revalidated. These
+contracts are checked by strict ty/Pyright and `test_inputs.py`, including a model
+validator counter and a resource iterator that raises if called. Query focus is
+constructed once per invocation.
+
 ## Baseline registry coverage
 
 `test_registry.py` reads the installed, pinned 2.2.4 registry without executing its

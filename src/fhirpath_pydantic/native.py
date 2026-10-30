@@ -1,5 +1,6 @@
 """Pydantic models own FHIR field planning, traversal and result collections."""
 
+from collections.abc import Mapping
 from datetime import date, datetime
 from functools import lru_cache
 from typing import Annotated, Self
@@ -11,10 +12,24 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
 
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.type_info import TypeInfo
-from fhirpath_pydantic.types import Collection, FHIRPathError, NativeModel, Value
+from fhirpath_pydantic.types import Collection, FHIRPathError, InputValue, NativeModel, Value
 
 _VALUE = TypeAdapter[Value](Value)
 type ResourceModel = Annotated[R4BResource, NativeModel] | Annotated[R5Resource, NativeModel]
+
+
+class NativeInput(RootModel[Value]):
+    """Readonly input shapes normalize through Pydantic while native models retain identity."""
+
+    @classmethod
+    def from_value(cls, value: InputValue) -> Self:
+        """Convert sequences and mappings into internal values without dumping models."""
+        return cls.model_validate(value)
+
+    @classmethod
+    def variables(cls, bindings: Mapping[str, InputValue]) -> dict[str, Value]:
+        """Normalize call-local environment bindings through the same input boundary."""
+        return {name: cls.from_value(value).root for name, value in bindings.items()}
 
 
 class Item(BaseModel):

@@ -8,11 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from fhirpath_pydantic.engine import State, evaluate_node
 from fhirpath_pydantic.expressions import Expression
-from fhirpath_pydantic.native import items, values
+from fhirpath_pydantic.native import NativeInput, items, values
 from fhirpath_pydantic.options import EvaluationOptions
 from fhirpath_pydantic.references import ResolutionScope
 from fhirpath_pydantic.syntax import Node, parse
-from fhirpath_pydantic.types import FHIRPathError, Value
+from fhirpath_pydantic.types import FHIRPathError, InputValue, Value
 
 
 class CompiledQuery[T](BaseModel):
@@ -42,7 +42,7 @@ class CompiledQuery[T](BaseModel):
     def as_array[I: Value](self, input_type: type[I]) -> CompiledArray[I, T]:
         """Expose a callback that checks the declared native input model."""
 
-        def run(resource: I, context: Mapping[str, Value] | None = None) -> list[T]:
+        def run(resource: I, context: Mapping[str, InputValue] | None = None) -> list[T]:
             if not isinstance(resource, input_type):
                 raise FHIRPathError(f"Expected input type {input_type.__name__}")
             return self(resource, context)
@@ -53,28 +53,30 @@ class CompiledQuery[T](BaseModel):
         """Expose a typed optional-first callback with native input checking."""
         query = self.as_array(input_type)
 
-        def run(resource: I, context: Mapping[str, Value] | None = None) -> T | None:
+        def run(resource: I, context: Mapping[str, InputValue] | None = None) -> T | None:
             result = query(resource, context)
             return result[0] if result else None
 
         return run
 
-    def __call__(self, resource: Value, context: Mapping[str, Value] | None = None) -> list[T]:
+    def __call__(self, resource: InputValue, context: Mapping[str, InputValue] | None = None) -> list[T]:
         """Evaluate and strictly validate each returned native value."""
+        subject = NativeInput.from_value(resource).root
+        focus = items(subject)
         variables: dict[str, Value] = {
-            "resource": resource,
-            "rootResource": resource,
-            "context": resource,
+            "resource": subject,
+            "rootResource": subject,
+            "context": subject,
         }
         if context is not None:
-            variables.update(context)
+            variables.update(NativeInput.variables(context))
         result = values(
             evaluate_node(
                 self.node,
-                items(resource),
+                focus,
                 State(
                     variables=variables,
-                    context_focus=tuple(items(resource)),
+                    context_focus=tuple(focus),
                     options=self.options,
                     resolution=ResolutionScope(resource=variables["rootResource"]),
                 ),
@@ -82,12 +84,12 @@ class CompiledQuery[T](BaseModel):
         )
         return [self.adapter.validate_python(value, strict=True) for value in result]
 
-    def first(self, resource: Value, context: Mapping[str, Value] | None = None) -> T | None:
+    def first(self, resource: InputValue, context: Mapping[str, InputValue] | None = None) -> T | None:
         """Return the first result or None."""
         result = self(resource, context)
         return result[0] if result else None
 
-    def one(self, resource: Value, context: Mapping[str, Value] | None = None) -> T | None:
+    def one(self, resource: InputValue, context: Mapping[str, InputValue] | None = None) -> T | None:
         """Return at most one result, rejecting unexpected cardinality."""
         result = self(resource, context)
         if len(result) > 1:
@@ -116,9 +118,9 @@ _VALUE_ADAPTER = TypeAdapter[Value](Value)
 
 
 def evaluate(
-    resource: Value,
+    resource: InputValue,
     expression: str | Expression,
-    context: Mapping[str, Value] | None = None,
+    context: Mapping[str, InputValue] | None = None,
     *,
     options: EvaluationOptions | None = None,
 ) -> list[Value]:
@@ -129,7 +131,7 @@ def evaluate(
 class CompiledArray[I, O](Protocol):
     """Typed input/output contract for compatibility with fhirpathpy helpers."""
 
-    def __call__(self, resource: I, context: Mapping[str, Value] | None = None) -> list[O]:
+    def __call__(self, resource: I, context: Mapping[str, InputValue] | None = None) -> list[O]:
         """Evaluate a resource and return all validated results."""
         ...
 
@@ -137,7 +139,7 @@ class CompiledArray[I, O](Protocol):
 class CompiledFirst[I, O](Protocol):
     """Typed optional-singleton contract for compatibility helpers."""
 
-    def __call__(self, resource: I, context: Mapping[str, Value] | None = None) -> O | None:
+    def __call__(self, resource: I, context: Mapping[str, InputValue] | None = None) -> O | None:
         """Evaluate a resource and return its first validated result."""
         ...
 

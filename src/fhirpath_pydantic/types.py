@@ -1,5 +1,6 @@
 """Closed native value types and explicit evaluation errors."""
 
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Annotated
@@ -30,6 +31,7 @@ class NativeModel:
 
 type Scalar = str | bool | int | float | Decimal | date | datetime | time | bytes | UUID
 type Value = Scalar | Annotated[BaseModel, NativeModel] | list[Value] | dict[str, Value] | None
+type InputValue = Scalar | Annotated[BaseModel, NativeModel] | Sequence[InputValue] | Mapping[str, InputValue] | None
 type Collection = list[Value]
 
 

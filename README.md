@@ -27,7 +27,12 @@ expression = (
 assert compile(expression, output_type=str)(patient, {"use": "official"}) == ["example"]
 ```
 
-`evaluate(resource, expression, context=None)` returns a collection. `compile`
+`evaluate(resource, expression, context=None)` returns a collection. Public inputs
+use the covariant `InputValue` contract: concrete lists such as `list[Patient]`,
+readonly sequences and mappings, and native models work without casts. Pydantic
+normalizes container shapes at the boundary while preserving resource identity
+and avoiding repeated resource validators. Context bindings and `literal()` use
+the same contract. `compile`
 creates a reusable query with `.first()` and cardinality-checking `.one()` helpers.
 `compile_as_array` and `compile_as_first` additionally check the input model class.
 `literal(value)` embeds a native constant in a fluent expression; `var(name)` binds

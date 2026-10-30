@@ -4,8 +4,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 
+from fhirpath_pydantic.native import NativeInput
 from fhirpath_pydantic.syntax import Node
-from fhirpath_pydantic.types import Value
+from fhirpath_pydantic.types import InputValue
 
 type BinaryOperator = Literal[
     "|",
@@ -49,9 +50,9 @@ class Expression(BaseModel):
         return expression
 
     @classmethod
-    def from_literal(cls, value: Value) -> Expression:
+    def from_literal(cls, value: InputValue) -> Expression:
         """Construct a native constant without quoting or string interpolation."""
-        return cls(node=Node(kind="Constant", source="literal", value=value))
+        return cls(node=Node(kind="Constant", source="literal", value=NativeInput.from_value(value).root))
 
     @classmethod
     def from_variable(cls, name: str) -> Expression:
@@ -118,7 +119,7 @@ def path(*segments: str) -> Expression:
     return Expression.from_path(*segments)
 
 
-def literal(value: Value) -> Expression:
+def literal(value: InputValue) -> Expression:
     """Embed a native constant without quoting or string escaping."""
     return Expression.from_literal(value)
 
