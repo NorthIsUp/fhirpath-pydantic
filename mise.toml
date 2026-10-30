@@ -24,3 +24,5 @@ run = "hk fix --all -S ruff"
 run = "uv lock"
 [tasks.parity]
 run = "uv run python tests/native/conformance.py"
+[tasks.profile]
+run = "uv run python tests/native/profile_runtime.py"

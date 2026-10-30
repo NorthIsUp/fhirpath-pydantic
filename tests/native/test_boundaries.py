@@ -216,3 +216,18 @@ def test_native_value_still_exposes_json_schema() -> None:
     """The native constraint must support schemas for public callback envelopes."""
     schema = TypeAdapter[Value](Value).json_schema()
     assert schema["$defs"]
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("8.log({})", []),
+        ("8.power({})", []),
+        ("1.5.round({})", [Decimal(2)]),
+        ("'abcdef'.substring(2, {})", ["cdef"]),
+        ("'abcdef'.substring({})", []),
+    ],
+)
+def test_empty_optional_arguments(expression: str, expected: Collection) -> None:
+    """Optional empty arguments keep defaults; required empty arguments propagate."""
+    assert evaluate(None, expression) == expected

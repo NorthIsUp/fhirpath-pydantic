@@ -64,7 +64,7 @@ class StringValue(RootModel[str]):
                 start = integer(params[0])
                 if start < 0 or start >= len(value):
                     return None
-                length = integer(params[1]) if len(params) > 1 else len(value)
+                length = integer(params[1]) if len(params) > 1 and params[1] else len(value)
                 return value[start : start + max(length, 0)]
             case "startsWith":
                 return value.startswith(string(params[0]))

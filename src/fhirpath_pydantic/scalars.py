@@ -122,8 +122,10 @@ class PrimitiveCollection(NativeCollection):
                 case "ln":
                     return items(value.ln()) if value > 0 else []
                 case "power":
-                    return items(value ** number(one(params[0])))
+                    return items(value ** number(one(params[0]))) if params[0] else []
                 case "log":
+                    if not params[0]:
+                        return []
                     base = number(one(params[0]))
                     if value <= 0 or base <= 0 or base == 1:
                         return []
@@ -132,7 +134,7 @@ class PrimitiveCollection(NativeCollection):
                         result = value.ln() / base.ln()
                     return items(+result)
                 case "round":
-                    precision = integer(params[0]) if params else 0
+                    precision = integer(params[0]) if params and params[0] else 0
                     if precision < 0:
                         raise FHIRPathError("round() precision cannot be negative")
                     return items(value.quantize(Decimal(1).scaleb(-precision), rounding="ROUND_HALF_UP"))
@@ -144,7 +146,8 @@ class PrimitiveCollection(NativeCollection):
     def strings(self, name: str, params: list[list[Item]]) -> list[Item]:
         """Delegate checked singleton text transformations to the string owner."""
         focus = self.root
-        if not focus or any(not parameter for parameter in params):
+        required = params[:1] if name == "substring" else params
+        if not focus or any(not parameter for parameter in required):
             return []
         return items(StringValue.model_validate(string(focus)).transform(name, params))
 

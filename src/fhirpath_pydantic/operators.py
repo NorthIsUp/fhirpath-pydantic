@@ -1,14 +1,14 @@
 """FHIRPath singleton, equality and three-valued Boolean semantics."""
 
 from datetime import date, datetime, time
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 
-from pydantic import ConfigDict, RootModel
+from pydantic import BaseModel, ConfigDict, RootModel
 
-from fhirpath_pydantic.native import Item, NativeCollection, items
+from fhirpath_pydantic.native import Item, ModelPlan, NativeCollection, items
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.temporal import TemporalValue
-from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
+from fhirpath_pydantic.types import Collection, FHIRPathError, UnsupportedFeatureError, Value
 
 
 def one(collection: list[Item]) -> Value:
@@ -58,6 +58,57 @@ class ScalarValue(RootModel[Value]):
             raise FHIRPathError("Expected a numeric value")
         return Decimal(str(value))
 
+    def decimal_precision(self) -> int:
+        """Count meaningful fractional digits without context-dependent normalization."""
+        value = self.number()
+        if not value.is_finite():
+            raise FHIRPathError("Nonfinite numbers cannot be compared")
+        parts = value.as_tuple()
+        exponent = parts.exponent
+        assert isinstance(exponent, int)
+        digits = list(parts.digits)
+        while exponent < 0 and digits and digits[-1] == 0:
+            digits.pop()
+            exponent += 1
+        return min(0, exponent)
+
+    def decimal_equivalent(self, right: Value) -> bool:
+        """Round decimal values at their least precise fractional position."""
+        other = type(self).model_construct(root=right)
+        left_number, right_number = self.number(), other.number()
+        precision = max(self.decimal_precision(), other.decimal_precision())
+        quantum = Decimal(1).scaleb(precision)
+        with localcontext() as context:
+            context.prec = (
+                max(context.prec, left_number.adjusted() + 1, right_number.adjusted() + 1) + abs(precision) + 2
+            )
+            return left_number.quantize(quantum, rounding=ROUND_HALF_UP) == right_number.quantize(
+                quantum, rounding=ROUND_HALF_UP
+            )
+
+    def properties(self, *, ignore_id: bool = False) -> dict[str, Collection] | None:
+        """Read complex child collections through aliases without dumping native models."""
+        value = self.root
+        result: dict[str, Collection] = {}
+        if isinstance(value, BaseModel):
+            item = Item.from_native(value)
+            for name in ModelPlan.from_model(type(value)).children:
+                if ignore_id and name == "id":
+                    continue
+                children = [child.system_value() for child in item.member(name).root]
+                if children:
+                    result[name] = children
+            return result
+        if isinstance(value, dict):
+            for name, child in value.items():
+                if name == "resourceType" or ignore_id and name == "id":
+                    continue
+                children = [item.system_value() for item in items(child)]
+                if children:
+                    result[name] = children
+            return result
+        return None
+
     def equals(self, right: Value, *, equivalent: bool = False) -> bool | None:
         """Compare compatible quantities, temporal values and primitives."""
         left = self.root
@@ -76,7 +127,29 @@ class ScalarValue(RootModel[Value]):
         if isinstance(left, bool):
             return left == right
         if isinstance(left, (int, float, Decimal)) and isinstance(right, (int, float, Decimal)):
-            return number(left) == number(right)
+            return self.decimal_equivalent(right) if equivalent else self.number() == number(right)
+        if isinstance(left, list) and isinstance(right, list):
+            if not left and not right:
+                return True
+            result = OperatorCollection.model_construct(root=items(left)).binary(
+                "~" if equivalent else "=", items(right)
+            )
+            return Item.boolean(result)
+        if isinstance(left, (BaseModel, dict)) and isinstance(right, (BaseModel, dict)):
+            left_type, right_type = Item.from_native(left).resource_type(), Item.from_native(right).resource_type()
+            if left_type != right_type:
+                return False
+            ignore_id = equivalent and left_type is not None
+            left_properties = self.properties(ignore_id=ignore_id)
+            right_properties = type(self).model_construct(root=right).properties(ignore_id=ignore_id)
+            assert left_properties is not None and right_properties is not None
+            if left_properties.keys() != right_properties.keys():
+                return False
+            comparisons = [
+                type(self).model_construct(root=children).equals(right_properties[name], equivalent=equivalent)
+                for name, children in left_properties.items()
+            ]
+            return False if False in comparisons else None if None in comparisons else True
         return left == right
 
     def compare(self, b: Value) -> int | None:
