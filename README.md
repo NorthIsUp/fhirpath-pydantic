@@ -114,3 +114,12 @@ to error, and lock freshness. Handwritten runtime and native tests contain no `A
 casts, or type suppression comments. The benchmark compares compiled native queries
 against compiled fhirpathpy plus `model_dump(by_alias=True, exclude_none=True)`;
 it reports timings without making hardware-dependent pass/fail claims.
+
+
+`mise run parity` executes every original YAML scenario against native validated
+resources and writes `dist/parity-report.json`. It exits nonzero while any enabled
+case fails, uses an unsupported feature, lacks an expectation, or has an input
+rejected by FHIR validation. Upstream-disabled cases remain visible. Error cases
+are actually evaluated; an unsupported feature never satisfies an expected error.
+The audit compares native models, quantities and temporal values with their
+analogous expected values rather than requiring JSON-shaped results.

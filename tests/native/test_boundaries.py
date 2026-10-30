@@ -10,7 +10,7 @@ from pydantic import BaseModel, TypeAdapter
 
 from fhirpath_pydantic import CompiledQuery, FHIRPathError, compile, evaluate, literal, path
 from fhirpath_pydantic import query as query_module
-from fhirpath_pydantic.types import Collection
+from fhirpath_pydantic.types import Collection, Value
 
 
 @pytest.mark.parametrize(
@@ -161,3 +161,17 @@ def test_clock_is_stable_within_one_evaluation() -> None:
     """Repeated clock functions use one evaluation timestamp, as FHIRPath requires."""
     assert evaluate(None, "now() = now()") == [True]
     assert evaluate(None, "timeOfDay() = timeOfDay()") == [True]
+
+
+def test_value_validation_preserves_nested_mappings() -> None:
+    """Dynamic JSON maps must never become empty generic BaseModel instances."""
+    adapter = TypeAdapter[Value](Value)
+    expected: Value = {"nested": {"id": "example"}, "rows": [{"active": True}]}
+    assert adapter.validate_python(expected) == expected
+    assert adapter.validate_json('{"nested":{"id":"example"},"rows":[{"active":true}]}') == expected
+
+
+def test_value_validation_preserves_native_model_identity() -> None:
+    """A model branch accepts existing native instances without dictionary coercion."""
+    patient = Patient(active=True)
+    assert TypeAdapter[Value](Value).validate_python(patient) is patient

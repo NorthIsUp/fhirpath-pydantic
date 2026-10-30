@@ -115,6 +115,7 @@ dev = [
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "ty" },
+    { name = "types-pyyaml" },
 ]
 
 [package.metadata]
@@ -133,6 +134,7 @@ dev = [
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "ruff", specifier = ">=0.14" },
     { name = "ty", specifier = ">=0.0.89" },
+    { name = "types-pyyaml", specifier = ">=6,<7" },
 ]
 
 [[package]]
@@ -388,6 +390,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/06/ad/d2ece9e2ec588394d0ea0c12b683ff68540f5534988b4e4412664bb87a56/ty-0.0.93-py3-none-win32.whl", hash = "sha256:1c677be05fb0ef0864a305fa4a5258190fc0fc9d79f53c1ce93a0342256f21f1", size = 13464721, upload-time = "2026-10-28T00:52:35.916Z" },
     { url = "https://files.pythonhosted.org/packages/a9/17/ef0c1180498564f08331f4be35aea9de09b37c6ca12fa50ad1959d9d1e38/ty-0.0.93-py3-none-win_amd64.whl", hash = "sha256:65072e0a71f9af81a31a4656521c96eaf539452c37287b9e14a81504b22e0864", size = 14091561, upload-time = "2026-10-28T00:52:38.008Z" },
     { url = "https://files.pythonhosted.org/packages/ef/f8/13fb149c7c5a33be119ecea9c56033b32cc1f87c5ac84d577f2236b7c964/ty-0.0.93-py3-none-win_arm64.whl", hash = "sha256:47991915f6a2101cc63da1dd07b2f3bbd226ab4a14ff3c858b20764c38376166", size = 13552165, upload-time = "2026-10-28T00:52:40.111Z" },
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.20260906"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/6e/abec85b9013db5b934b0280a6dd104904d84f7bcbaab2e2f3def87ac7463/types_pyyaml-6.0.12.20260906.tar.gz", hash = "sha256:f59c1cc05010b833d2d72287bbaa72610106b28d42d89a907313117faba85212", size = 18649, upload-time = "2026-09-06T06:35:35.362Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl", hash = "sha256:bca893ff0d51df5c9053137d5d0e6ccd36e939a196356f1d5c16372422f5137b", size = 21282, upload-time = "2026-09-06T06:35:34.372Z" },
 ]
 
 [[package]]

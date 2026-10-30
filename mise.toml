@@ -19,3 +19,8 @@ run = "hk fix --all -S format"
 [tasks.fix]
 depends = ["format"]
 run = "hk fix --all -S ruff"
+
+[tasks.lock]
+run = "uv lock"
+[tasks.parity]
+run = "uv run python tests/native/conformance.py"

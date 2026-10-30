@@ -4,10 +4,10 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, InstanceOf
 
 type Scalar = str | bool | int | float | Decimal | date | datetime | time | bytes | UUID
-type Value = Scalar | BaseModel | list[Value] | dict[str, Value] | None
+type Value = Scalar | list[Value] | dict[str, Value] | InstanceOf[BaseModel] | None
 type Collection = list[Value]
 
 
