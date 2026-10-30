@@ -1,10 +1,11 @@
 """FHIRPath singleton, equality and three-valued Boolean semantics."""
 
 from datetime import date, datetime, time
-from decimal import ROUND_HALF_UP, Decimal, localcontext
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, RootModel
 
+from fhirpath_pydantic.decimal_value import DecimalValue
 from fhirpath_pydantic.native import Item, ModelPlan, NativeCollection, items
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.temporal import TemporalValue
@@ -58,33 +59,9 @@ class ScalarValue(RootModel[Value]):
             raise FHIRPathError("Expected a numeric value")
         return Decimal(str(value))
 
-    def decimal_precision(self) -> int:
-        """Count meaningful fractional digits without context-dependent normalization."""
-        value = self.number()
-        if not value.is_finite():
-            raise FHIRPathError("Nonfinite numbers cannot be compared")
-        parts = value.as_tuple()
-        exponent = parts.exponent
-        assert isinstance(exponent, int)
-        digits = list(parts.digits)
-        while exponent < 0 and digits and digits[-1] == 0:
-            digits.pop()
-            exponent += 1
-        return min(0, exponent)
-
     def decimal_equivalent(self, right: Value) -> bool:
-        """Round decimal values at their least precise fractional position."""
-        other = type(self).model_construct(root=right)
-        left_number, right_number = self.number(), other.number()
-        precision = max(self.decimal_precision(), other.decimal_precision())
-        quantum = Decimal(1).scaleb(precision)
-        with localcontext() as context:
-            context.prec = (
-                max(context.prec, left_number.adjusted() + 1, right_number.adjusted() + 1) + abs(precision) + 2
-            )
-            return left_number.quantize(quantum, rounding=ROUND_HALF_UP) == right_number.quantize(
-                quantum, rounding=ROUND_HALF_UP
-            )
+        """Compare numeric values through the finite Decimal precision owner."""
+        return DecimalValue.model_validate(self.number()).equivalent(number(right))
 
     def properties(self, *, ignore_id: bool = False) -> dict[str, Collection] | None:
         """Read complex child collections through aliases without dumping native models."""

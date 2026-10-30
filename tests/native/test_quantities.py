@@ -156,3 +156,21 @@ def test_quantity_arithmetic_retains_source_models() -> None:
     assert evaluate(resource, "$this + 500 'g'") == [QuantityValue(value=Decimal(1500), unit="g")]
     assert evaluate(resource, "$this")[0] is resource
     assert resource.value == Decimal(1)
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("4 'g' ~ 4040 'mg'", [True]),
+        ("4040 'mg' ~ 4 'g'", [True]),
+        ("4.01 'g' ~ 4040 'mg'", [False]),
+        ("185 '[lb_av]' ~ 84 'kg'", [True]),
+        ("84 'kg' ~ 185 '[lb_av]'", [True]),
+        ("1 'kg' ~ 1 'm'", [False]),
+        ("4 'g' = 4040 'mg'", [False]),
+    ],
+)
+def test_quantity_equivalence_preserves_source_precision(expression: str, expected: Collection) -> None:
+    """Unit conversion shifts comparison precision without rounding actual values."""
+    assert evaluate(None, expression) == expected
+    assert evaluate(None, "(185 '[lb_av]').toQuantity('kg').value") == [Decimal("83.91458845")]

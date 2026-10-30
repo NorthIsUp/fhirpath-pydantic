@@ -89,7 +89,9 @@ cover mass, length, volume, time and their products/quotients. Other UCUM codes
 remain opaque and exact-match only; this is not a complete UCUM catalogue. Native
 FHIR quantities require a UCUM system and code for implicit conversion, and a
 comparator cannot silently become an exact value. Calendar durations remain
-separate from definite units; conversion uses Decimal without integer rounding.
+separate from definite units; conversion uses Decimal without integer rounding. Quantity equivalence carries
+input precision through unit conversion; exact equality and converted values
+remain exact.
 
 `EvaluationOptions` registers typed `CustomFunction` definitions, a trace sink,
 and a native reference resolver. Handlers receive `FunctionCall` and return native

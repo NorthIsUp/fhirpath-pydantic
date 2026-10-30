@@ -3,10 +3,19 @@
 from pathlib import Path
 
 import pytest
-from conformance import CaseOutcome, ConformanceReport, FixtureCase, FixtureInput, FixtureNode, FixtureSuite
+from conformance import (
+    BoundExpression,
+    CaseOutcome,
+    ConformanceReport,
+    FixtureCase,
+    FixtureInput,
+    FixtureNode,
+    FixtureSuite,
+)
 from pydantic import BaseModel
 
 from fhirpath_pydantic import evaluate
+from fhirpath_pydantic.types import Value
 
 
 @pytest.mark.parametrize(
@@ -88,3 +97,24 @@ def test_legacy_error_result_is_executed_as_error_assertion(tmp_path: Path) -> N
         {"expression": "(1 | 2).single()", "result": [{"$status": "error", "$error": "Expected single"}]}
     )
     assert case.run("(1 | 2).single()", None, tmp_path)[0] == "passed"
+
+
+@pytest.mark.parametrize("release", ["r4", "r5"])
+def test_fragment_input_uses_native_pydantic_type(release: str, tmp_path: Path) -> None:
+    """Legacy fragment hints select a native complex type, never a model-less fallback."""
+    expression = BoundExpression(base="QuestionnaireResponse.item", expression="answer.value = 2 year")
+    case = FixtureCase.model_validate({"expression": expression, "result": [True], "model": release})
+    subject: Value = {
+        "linkId": "synthetic",
+        "answer": [{"valueQuantity": {"value": 2, "system": "http://unitsofmeasure.org", "code": "a"}}],
+    }
+    assert case.run(expression, subject, tmp_path)[0] == "passed"
+
+
+def test_fragment_missing_required_field_is_rejected(tmp_path: Path) -> None:
+    """The legacy fragment's missing linkId must be reported as native input rejection."""
+    expression = BoundExpression(base="QuestionnaireResponse.item", expression="answer.value = 2 year")
+    case = FixtureCase.model_validate(
+        {"expression": expression, "result": [True], "inputfile": "questionnaire-part-example.json", "model": "r4"}
+    )
+    assert case.run(expression, None, Path(__file__).parents[1] / "resources")[0] == "input_rejected"

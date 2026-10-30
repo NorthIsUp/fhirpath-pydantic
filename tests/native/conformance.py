@@ -6,11 +6,13 @@ from collections.abc import Iterator
 from datetime import date, datetime, time
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Self, get_args
 
 import yaml
 from fhir.resources import get_fhir_model_class as r5_model
 from fhir.resources.R4B import get_fhir_model_class as r4b_model
+from fhir_core.fhirabstractmodel import FHIRAbstractModel
+from fhir_core.types import FhirBase
 from pydantic import BaseModel, Field, RootModel, TypeAdapter, ValidationError
 
 from fhirpath_pydantic import FHIRPathError, QuantityValue, UnsupportedFeatureError, evaluate
@@ -84,10 +86,38 @@ class ExpectedValue(RootModel[Value]):
 
 
 class BoundExpression(BaseModel):
-    """Legacy fragment metadata is preserved until its native-input adaptation is verified."""
+    """Legacy fragment hints select a native Pydantic complex type at the input boundary."""
 
-    base: str
+    base: str = Field(pattern=r"^[A-Z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)*$")
     expression: str
+
+    @classmethod
+    def model_from_annotation(cls, annotation: object) -> type[FHIRAbstractModel] | None:
+        """Resolve complex FHIR declarations through optional and collection metadata."""
+        if isinstance(annotation, type):
+            if issubclass(annotation, FhirBase):
+                return annotation.get_model_klass()
+            if issubclass(annotation, FHIRAbstractModel):
+                return annotation
+        arguments: tuple[object, ...] = get_args(annotation)
+        for argument in arguments:
+            if (model := cls.model_from_annotation(argument)) is not None:
+                return model
+        return None
+
+    def validate_input(self, value: Value, release: str | None = None) -> FHIRAbstractModel:
+        """Validate the fragment with its declared native model, including required fields."""
+        root, *segments = self.base.split(".")
+        model = (r5_model if release == "r5" else r4b_model)(root)
+        for segment in segments:
+            field = next(
+                (field for name, field in model.model_fields.items() if (field.alias or name) == segment), None
+            )
+            child = self.model_from_annotation(field.rebuild_annotation()) if field is not None else None
+            if child is None:
+                raise FHIRPathError("Fragment base must select a native complex model")
+            model = child
+        return model.model_validate(value)
 
 
 class FixtureCase(BaseModel):
@@ -120,14 +150,17 @@ class FixtureCase(BaseModel):
         """Execute error assertions; unsupported features never count as successful errors."""
         if self.disable:
             return "disabled", "Disabled in upstream"
-        if isinstance(expression, BoundExpression):
-            return "unsupported", f"Native fragment adaptation required for {expression.base}"
+        query_text = expression.expression if isinstance(expression, BoundExpression) else expression
         try:
             source = (
                 FixtureInput.from_file(resources / self.input_file, self.release)
                 if self.input_file is not None
                 else FixtureInput.from_value(subject, self.release)
             )
+            if isinstance(expression, BoundExpression):
+                source = FixtureInput(value=expression.validate_input(source.value, self.release))
+        except FHIRPathError:
+            return "input_rejected", "Fragment base must select a native complex model"
         except ValidationError as error:
             return "input_rejected", f"FHIR validation rejected {error.error_count()} field(s)"
         variables: dict[str, Value] = {"resource": source.value, **self.variables}
@@ -135,7 +168,7 @@ class FixtureCase(BaseModel):
             if self.context is not None:
                 selected = evaluate(source.value, self.context, variables)
                 variables["context"] = selected[0] if selected else None
-            actual = evaluate(source.value, expression, variables)
+            actual = evaluate(source.value, query_text, variables)
         except UnsupportedFeatureError as error:
             return "unsupported", str(error)
         except (FHIRPathError, ValidationError) as error:

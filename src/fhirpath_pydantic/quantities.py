@@ -9,6 +9,7 @@ from fhir.resources.quantity import Quantity as R5Quantity
 from fhir.resources.R4B.quantity import Quantity as R4BQuantity
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator
 
+from fhirpath_pydantic.decimal_value import DecimalValue
 from fhirpath_pydantic.types import FHIRPathError, Value
 
 
@@ -248,12 +249,32 @@ class QuantityValue(BaseModel):
             return None
         return (self.value > converted.value) - (self.value < converted.value)
 
+    def equivalent(self, other: QuantityValue) -> bool:
+        """Shift original comparison precision into the most granular common unit."""
+        if not self.comparable(other, equivalent=True):
+            return False
+        left_unit, right_unit = QuantityUnit.from_code(self.unit), QuantityUnit.from_code(other.unit)
+        unit = self.unit if left_unit.factor <= right_unit.factor else other.unit
+        left, right = self.convert_to(unit), other.convert_to(unit)
+        left_quantum = type(self)(value=DecimalValue.model_validate(self.value).quantum(), unit=self.unit).convert_to(
+            unit
+        )
+        right_quantum = type(self)(
+            value=DecimalValue.model_validate(other.value).quantum(), unit=other.unit
+        ).convert_to(unit)
+        if left is None or right is None or left_quantum is None or right_quantum is None:
+            return False
+        return DecimalValue.model_validate(left.value).equivalent(
+            right.value, quantum=max(left_quantum.value, right_quantum.value)
+        )
+
     def equals(self, other: QuantityValue, *, equivalent: bool = False) -> bool | None:
         """Calendar and definite durations above seconds are unequal, not identical."""
+        if equivalent:
+            return self.equivalent(other)
         left, right = QuantityUnit.from_code(self.unit), QuantityUnit.from_code(other.unit)
         if (
-            not equivalent
-            and left.is_calendar() != right.is_calendar()
+            left.is_calendar() != right.is_calendar()
             and not self.comparable(other)
             and left.dimensions == right.dimensions
         ):
