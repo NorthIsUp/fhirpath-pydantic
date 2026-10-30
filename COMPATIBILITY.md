@@ -66,7 +66,7 @@ FHIR primitive value, so partial native dates cannot silently become strings.
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Original fhirpathpy YAML | 1,545 | 1,387 | 13 | 0 | 75 | 70 |
-| Official HL7 R4/R4B/R5 XML | 3,613 | 2,857 | 31 | 690 | 35 | 0 |
+| Official HL7 R4/R4B/R5 XML | 3,613 | 2,854 | 34 | 690 | 35 | 0 |
 
 Run `mise run parity` and `mise run parity:hl7` to reproduce the complete JSON
 reports under `dist/`. Both commands currently exit nonzero. Error assertions
@@ -86,7 +86,7 @@ bind after arithmetic and before union or comparison, as specified by the
 The synthetic `Functions` resource also lacks native FHIR choice metadata for
 nested extension values. Its native R4B/R5 equivalent is covered in
 `test_boundaries.py`, including chained extension choice values and ids.
-All 44 result/error differences have individual executable native expectations in
+All 47 result/error differences have individual executable native expectations in
 `test_reviewed_differences.py`. The tests evaluate every original case, check each
 failed expression against its reviewed result or domain error, and require the
 exact occurrence counts and raw status totals. A fixed evaluation clock makes
@@ -98,7 +98,7 @@ reclassify audit results, or claim full HL7 conformance.
 | Calendar versus mean UCUM year | 1 | 0 | Equality and inequality are indeterminate without explicit conversion |
 | Timestamp formatting | 2 | 0 | Preserve native microseconds |
 | Type-operator precedence | 3 | 0 | Bind type tests before union and comparison |
-| FHIR primitive identity | 1 | 3 | Retain declared id/code identity separately from System.String |
+| FHIR primitive identity and specialization | 1 | 6 | Preserve declared FHIR identity, support parent types, and keep System types distinct |
 | Date and fractional-second arithmetic | 1 | 2 | Support native calendar addition and preserve fractions |
 | Synthetic extension choice metadata | 1 | 0 | Use validated native R4B/R5 extensions; both analogues are regression-tested |
 | Partial date comparison | 3 | 0 | Missing time precision remains indeterminate |
@@ -168,6 +168,49 @@ follow the [current Quantity definitions](https://hl7.org/fhirpath/en/index.html
 The fluent `binary()` method accepts the checked `BinaryOperator` type, so numeric,
 quantity and temporal operations do not require rendering operands into query text.
 The native arithmetic regression test rejects any attempt to invoke the parser.
+
+## Validated equivalents for rejected inputs
+
+`test_validated_fixtures.py` executes native equivalents of all 75 rejected
+baseline assertions for both R4B and R5. The upstream payloads stay unchanged and
+production validation remains strict. Explicit test-only changes cover the
+`deceasedBoolean` choice shape, required resource/fragment fields, answer arrays,
+obsolete Questionnaire options, and a representable ValueSet expansion URI.
+
+Expectation and syntax adjustments are explicit in the tests: the model-less
+choice test now has native metadata; calendar years versus mean UCUM years have
+indeterminate inequality; and two Patient scenarios use `given.exists()` and
+`length()` rather than a multivalued Boolean criterion or a nonexistent scalar
+property. The original expressions' singleton error and empty results are also
+asserted before running their valid equivalents.
+
+The vendor Extension model omits `_valueString`. A small typed Pydantic Extension
+profile declares this companion explicitly; both native releases then support
+`preferred.extension('test').value.id` even when the primitive has no value.
+The evaluator needs no special case or serialization fallback for the profile.
+
+The official Parameters fixture uses a version-1 UUID that the vendor's version-4
+UUID field rejects. Validated version-4 equivalents run all five original type
+assertions for R4, R4B and R5. The rejected benefit fixture's subset expression
+also runs with required resource fields supplied. These cover 17 of the 35
+rejected official assertions. The other 18 exercise document extensions such as
+`section`, `resources`, `entryIn` and `sameSubject`, which are outside the pinned
+2.2.4 baseline; their malformed Bundle references remain rejected in the raw audit.
+
+FHIR primitive specialization is independent of Python's runtime representation:
+code/id/markdown specialize string; canonical/url/oid/uuid specialize uri; and
+positiveInt/unsignedInt specialize integer. Native `is`, `as` and `ofType` support
+these parents while `type().name` retains the concrete declaration. All nine
+pairs are tested with actual Parameters fields and independently compared with
+both pinned baseline model hierarchies. Declaring model metadata also retains
+R5 PrimitiveType/DataType ancestry, while R4B primitives retain Element ancestry.
+This cached internal ancestry is excluded from TypeInfo output and traversal.
+See the official
+[code](https://fhir.hl7.org/fhir/code.profile.json.html) and
+[UUID](https://fhir.hl7.org/fhir/uuid.profile.xml.html) definitions.
+The historical corpus's `is(string)` assertions now pass, while its exact-type
+`as(string)`/`ofType(string)` expectations remain visible differences:
+[ofType includes subclasses](https://hl7.org/fhirpath/en/index.html#oftypetype--type-specifier--collection).
 
 ## Unit and execution boundaries
 

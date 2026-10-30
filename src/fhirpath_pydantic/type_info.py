@@ -7,10 +7,12 @@ from typing import ClassVar, Self, get_args
 from uuid import UUID
 
 from fhir.resources import get_fhir_model_class as r5_model
+from fhir.resources.base import Base as R5Base
+from fhir.resources.fhirprimitiveextension import FHIRPrimitiveExtension as R5PrimitiveExtension
 from fhir.resources.R4B import get_fhir_model_class as r4b_model
 from fhir_core.constraints import FHIR_PRIMITIVES_MAPS
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.temporal import TemporalValue
@@ -23,6 +25,8 @@ class TypeInfo(BaseModel):
     model_config = ConfigDict(frozen=True)
     namespace: str
     name: str
+    bases: tuple[str, ...] = Field(default=(), exclude=True, repr=False, json_schema_extra={"element_property": False})
+    """Nonserialized ancestry of a primitive's declaring FHIR release."""
 
     PRIMITIVES: ClassVar[dict[str, str]] = {
         "boolean": "Boolean",
@@ -48,20 +52,42 @@ class TypeInfo(BaseModel):
         "time": "Time",
     }
 
+    # Primitive specializations from the FHIR StructureDefinitions' baseDefinition.
+    # These are FHIR-to-FHIR inheritance rules, separate from implicit System conversion.
+    PRIMITIVE_BASES: ClassVar[dict[str, str]] = {
+        "canonical": "uri",
+        "code": "string",
+        "id": "string",
+        "markdown": "string",
+        "oid": "uri",
+        "positiveInt": "integer",
+        "unsignedInt": "integer",
+        "url": "uri",
+        "uuid": "uri",
+    }
+
     @classmethod
-    def from_annotation(cls, annotation: object) -> Self | None:
+    def from_annotation(cls, annotation: object, *, model: type[BaseModel] | None = None) -> Self | None:
         """Read vendor primitive metadata through optional, list and Annotated types."""
         if isinstance(annotation, type) and (name := FHIR_PRIMITIVES_MAPS.get(annotation)) is not None:
-            return cls(namespace="FHIR", name=name)
+            return cls.from_primitive(name, model=model)
         arguments: tuple[object, ...] = get_args(annotation)
         # Metadata takes precedence over an Annotated value's underlying Python type.
         for argument in reversed(arguments):
             if (name := FHIR_PRIMITIVES_MAPS.get(type(argument))) is not None:
-                return cls(namespace="FHIR", name=name)
+                return cls.from_primitive(name, model=model)
         for argument in arguments:
-            if (declared := cls.from_annotation(argument)) is not None:
+            if (declared := cls.from_annotation(argument, model=model)) is not None:
                 return declared
         return None
+
+    @classmethod
+    def from_primitive(cls, name: str, *, model: type[BaseModel] | None = None) -> Self:
+        """Retain abstract primitive ancestry from the native declaring model's release."""
+        bases = ("Element", "Base")
+        if model is not None and name != "xhtml" and issubclass(model, (R5Base, R5PrimitiveExtension)):
+            bases = ("PrimitiveType", "DataType", "Element", "Base")
+        return cls(namespace="FHIR", name=name, bases=bases)
 
     @classmethod
     def from_value(cls, value: Value) -> Self:
@@ -175,7 +201,7 @@ class TypeInfo(BaseModel):
         if self.name == name:
             return True
         if self.namespace == "FHIR" and self.name in self.PRIMITIVES:
-            return name in {"Element", "Base"}
+            return name in (self.bases or ("Element", "Base")) or self.PRIMITIVE_BASES.get(self.name) == name
         if isinstance(value, BaseModel):
             return any(base.__name__ == name for base in type(value).__mro__)
         return False

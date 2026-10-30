@@ -82,9 +82,10 @@ precision-aware temporal literals and comparisons. Unsupported functions raise `
 
 This is **not a drop-in implementation of every fhirpathpy feature**.
 `type()` returns a typed `TypeInfo` model. Declared FHIR primitive subtypes are
-retained separately from their Python representations: `is()` distinguishes
-`FHIR.code` from `FHIR.string` and System types, while `ofType()` also supports
-implicit System conversion. `getValue()` returns the underlying System value. Raw dictionaries support ordinary fields; native choice
+retained separately from their Python representations: `type()` retains concrete primitive identity, while `is()`, `as()` and `ofType()`
+recognize FHIR primitive specializations (for example, code specializes string
+and uuid specializes uri). `is()` still distinguishes FHIR primitives from System
+types; `ofType()` also supports implicit System conversion. `getValue()` returns the underlying System value. Raw dictionaries support ordinary fields; native choice
 resolution requires FHIR models. Use R4B or R5 models for clinical resources.
 
 Partial temporal results use the frozen `TemporalValue` Pydantic model; complete

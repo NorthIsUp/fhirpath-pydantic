@@ -198,7 +198,7 @@ class ModelPlan(BaseModel):
             plan = FieldPlan(
                 name=name,
                 companion=companion,
-                declared_type=TypeInfo.from_annotation(field.rebuild_annotation())
+                declared_type=TypeInfo.from_annotation(field.rebuild_annotation(), model=model)
                 if issubclass(model, FHIRAbstractModel)
                 else None,
             )

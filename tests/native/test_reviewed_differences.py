@@ -127,8 +127,15 @@ HL7_REVIEWS: dict[str, NativeExpectation] = {
         occurrences=3,
         rationale="Native Pydantic field aliases remain accessible alongside choice groups.",
     ),
-    "Patient.gender.is(string)": NativeExpectation(
-        expected=[False], occurrences=3, rationale="FHIR.code and FHIR.string retain distinct declared identities."
+    "Patient.gender.as(string)": NativeExpectation(
+        expected=["male"],
+        occurrences=3,
+        rationale="FHIR.code specializes FHIR.string; upcasting keeps the original value and declared code identity.",
+    ),
+    "Patient.gender.ofType(string)": NativeExpectation(
+        expected=["male"],
+        occurrences=3,
+        rationale="ofType includes subclasses, so a declared FHIR.code is included when selecting FHIR.string.",
     ),
     "'a'.combine('b').combine('a').distinct()": NativeExpectation(
         expected=["a", "b"], rationale="Distinct keeps first occurrences; FHIRPath does not guarantee the output order."
@@ -186,4 +193,4 @@ def test_every_hl7_difference_has_a_native_expectation(monkeypatch: pytest.Monke
                 HL7_REVIEWS[case.expression].check_hl7(case, directory, release)
                 failures[case.expression] += 1
     assert failures == Counter({expression: review.occurrences for expression, review in HL7_REVIEWS.items()})
-    assert statuses == Counter(passed=2857, failed=31, unsupported=690, input_rejected=35)
+    assert statuses == Counter(passed=2854, failed=34, unsupported=690, input_rejected=35)

@@ -9,9 +9,9 @@ from typing import ClassVar, Self, override
 import pytest
 from conformance import ConformanceReport
 from fhir.resources.patient import Patient
-from pydantic import RootModel
+from pydantic import RootModel, TypeAdapter
 
-from fhirpath_pydantic import QuantityValue, evaluate, query
+from fhirpath_pydantic import QuantityValue, TypeInfo, evaluate, query
 from fhirpath_pydantic.engine import State
 from fhirpath_pydantic.native import Item
 from fhirpath_pydantic.syntax import Node
@@ -137,3 +137,17 @@ def test_every_baseline_unit_conversion_pair() -> None:
                 assert converted is not None, (source, target)
                 restored = converted.convert_to(source)
                 assert restored is not None and quantity.equivalent(restored), (source, target)
+
+
+@pytest.mark.parametrize("release", ["r4", "r5"])
+def test_every_baseline_primitive_specialization(release: str) -> None:
+    """Native primitive parent rules cover every specialization in the pinned model contract."""
+    adapter = TypeAdapter[dict[str, str]](dict[str, str])
+    parents = adapter.validate_json(files("fhirpathpy.models").joinpath(f"{release}/type2Parent.json").read_bytes())
+    specializations = {
+        child: parent
+        for child, parent in parents.items()
+        if child in TypeInfo.PRIMITIVES and parent in TypeInfo.PRIMITIVES
+    }
+    assert len(specializations) == 9
+    assert specializations == TypeInfo.PRIMITIVE_BASES

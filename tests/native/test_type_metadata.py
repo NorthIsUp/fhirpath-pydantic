@@ -2,7 +2,9 @@
 
 import pytest
 from fhir.resources.observation import Observation
+from fhir.resources.parameters import Parameters
 from fhir.resources.patient import Patient
+from fhir.resources.R4B.parameters import Parameters as R4BParameters
 from fhir.resources.R4B.patient import Patient as R4BPatient
 from pydantic import BaseModel
 
@@ -25,9 +27,9 @@ from fhirpath_pydantic.types import Collection
         ("active.getValue().type().name", ["Boolean"]),
         ("gender.type().name", ["code"]),
         ("gender.is(FHIR.code)", [True]),
-        ("gender.is(FHIR.string)", [False]),
+        ("gender.is(FHIR.string)", [True]),
         ("gender.ofType(System.String)", ["female"]),
-        ("gender.ofType(FHIR.string)", []),
+        ("gender.ofType(FHIR.string)", ["female"]),
         ("name.given.type().name", ["string", "string"]),
         ("name.given.ofType(FHIR.string)", ["Ada", "Grace"]),
         ("name.given.ofType(System.String)", ["Ada", "Grace"]),
@@ -148,3 +150,37 @@ def test_fluent_python_model_type_is_retained() -> None:
     assert evaluate([], query) == []
     assert evaluate(sample, query) == [sample]
     assert evaluate(OtherScope.Sample(number=1), query) == []
+
+
+@pytest.mark.parametrize("resource_type", [Parameters, R4BParameters])
+@pytest.mark.parametrize(
+    ("field", "declared", "parent", "value"),
+    [
+        ("valueCode", "code", "string", "female"),
+        ("valueId", "id", "string", "example"),
+        ("valueMarkdown", "markdown", "string", "**text**"),
+        ("valueCanonical", "canonical", "uri", "http://example.org/profile"),
+        ("valueUrl", "url", "uri", "http://example.org"),
+        ("valueOid", "oid", "uri", "urn:oid:1.2.3"),
+        ("valueUuid", "uuid", "uri", "urn:uuid:79a14950-442c-41ed-b878-0242ac120002"),
+        ("valuePositiveInt", "positiveInt", "integer", 1),
+        ("valueUnsignedInt", "unsignedInt", "integer", 0),
+    ],
+)
+def test_primitive_specializations_keep_parent_type(
+    resource_type: type[Parameters] | type[R4BParameters], field: str, declared: str, parent: str, value: str | int
+) -> None:
+    """FHIR primitive inheritance supports is/as/ofType without erasing concrete identity."""
+    resource = resource_type.model_validate({"parameter": [{"name": "fixture", field: value}]})
+    assert evaluate(resource, "parameter.value.type().name") == [declared]
+    assert evaluate(resource, "parameter.value.is(FHIR.PrimitiveType)") == [resource_type is Parameters]
+    assert evaluate(resource, "parameter.value.is(FHIR.DataType)") == [resource_type is Parameters]
+    assert evaluate(resource, "parameter.value.type().bases") == []
+    [info] = evaluate(resource, "parameter.value.type()")
+    assert isinstance(info, BaseModel)
+    assert info.model_dump() == {"namespace": "FHIR", "name": declared}
+    assert evaluate(resource, f"parameter.value.is(FHIR.{parent})") == [True]
+    assert evaluate(resource, f"parameter.value.as(FHIR.{parent})") == evaluate(resource, "parameter.value")
+    assert evaluate(resource, f"parameter.value.ofType(FHIR.{parent})") == evaluate(resource, "parameter.value")
+    assert evaluate(resource, "parameter.value.is(System.String)") == [False]
+    assert evaluate(resource, "parameter.value.is(System.Integer)") == [False]
