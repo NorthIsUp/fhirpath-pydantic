@@ -2,15 +2,17 @@
 
 from collections.abc import Callable
 from functools import cached_property
-from typing import Annotated, Self
+from types import EllipsisType
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
-from fhirpath_pydantic.types import Collection, FHIRPathError, Value
+from fhirpath_pydantic.types import Collection, FHIRPathError, InputValue, Value
 
 _COLLECTION = TypeAdapter[Collection](Collection)
 _VALUE = TypeAdapter[Value](Value)
 type ArgumentCount = Annotated[int, Field(ge=0, strict=True)]
+_ARGUMENT_COUNT = TypeAdapter[ArgumentCount](ArgumentCount)
 
 
 class TraceEvent(BaseModel):
@@ -30,13 +32,53 @@ class FunctionCall(BaseModel):
     arguments: tuple[Collection, ...] = ()
 
 
-class CustomFunction(BaseModel):
-    """A native collection handler with a validated name and allowed arities."""
+class FunctionArity(BaseModel):
+    """Inclusive argument bounds; an absent maximum permits unbounded calls."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    minimum: ArgumentCount = 0
+    maximum: ArgumentCount | None = None
+
+    @model_validator(mode="after")
+    def ordered_bounds(self) -> Self:
+        """Reject impossible ranges when defining a callback."""
+        if self.maximum is not None and self.maximum < self.minimum:
+            raise ValueError("Maximum arity cannot be smaller than minimum arity")
+        return self
+
+    def accepts(self, count: int) -> bool:
+        """Check a runtime argument count against the validated inclusive range."""
+        return count >= self.minimum and (self.maximum is None or count <= self.maximum)
+
+
+class FunctionArgument(BaseModel):
+    """A deferred expression bound to one evaluation, without exposing mutable engine state."""
 
     model_config = ConfigDict(frozen=True)
     name: str
-    handler: Callable[[FunctionCall], Collection]
-    arity: tuple[ArgumentCount, ...] = (0,)
+    evaluator: Callable[[InputValue | EllipsisType, int | None], Collection]
+
+    def evaluate(self, focus: InputValue | EllipsisType = ..., *, index: int | None = None) -> Collection:
+        """Use the bound FHIR focus by default, or explicitly reframe native values and index."""
+        count = None if index is None else _ARGUMENT_COUNT.validate_python(index, strict=True)
+        return _COLLECTION.validate_python(self.evaluator(focus, count), strict=True)
+
+
+class MacroCall(BaseModel):
+    """Native focus and independently deferred arguments supplied to a custom macro."""
+
+    model_config = ConfigDict(frozen=True)
+    name: str
+    focus: Collection
+    arguments: tuple[FunctionArgument, ...] = ()
+
+
+class FunctionDefinition(BaseModel):
+    """Shared registration invariants for eager functions and deferred macros."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    name: str
+    arity: tuple[ArgumentCount, ...] | FunctionArity = (0,)
 
     @field_validator("name")
     @classmethod
@@ -48,16 +90,24 @@ class CustomFunction(BaseModel):
 
     @field_validator("arity")
     @classmethod
-    def valid_arity(cls, arity: tuple[int, ...]) -> tuple[int, ...]:
+    def valid_arity(cls, arity: tuple[int, ...] | FunctionArity) -> tuple[int, ...] | FunctionArity:
         """Require at least one unambiguous supported argument count."""
-        if not arity or len(set(arity)) != len(arity):
+        if isinstance(arity, tuple) and (not arity or len(set(arity)) != len(arity)):
             raise ValueError("Custom function arities must be nonempty and unique")
         return arity
 
     def check_arity(self, count: int) -> None:
         """Reject invalid calls before evaluating their argument expressions."""
-        if count not in self.arity:
+        accepted = self.arity.accepts(count) if isinstance(self.arity, FunctionArity) else count in self.arity
+        if not accepted:
             raise FHIRPathError(f"Invalid argument count for {self.name}()")
+
+
+class CustomFunction(FunctionDefinition):
+    """An eager native collection handler with validated argument counts."""
+
+    kind: Literal["function"] = "function"
+    handler: Callable[[FunctionCall], Collection]
 
     def invoke(self, focus: Collection, arguments: tuple[Collection, ...]) -> Collection:
         """Validate the callback's return boundary without dumping native models."""
@@ -66,11 +116,25 @@ class CustomFunction(BaseModel):
         return _COLLECTION.validate_python(self.handler(call), strict=True)
 
 
+class CustomMacro(FunctionDefinition):
+    """A native callback that controls which expressions evaluate and at what focus."""
+
+    kind: Literal["macro"] = "macro"
+    handler: Callable[[MacroCall], Collection]
+
+    def invoke(self, focus: Collection, arguments: tuple[FunctionArgument, ...]) -> Collection:
+        """Keep arguments deferred and validate the callback's native result."""
+        self.check_arity(len(arguments))
+        return _COLLECTION.validate_python(
+            self.handler(MacroCall(name=self.name, focus=focus, arguments=arguments)), strict=True
+        )
+
+
 class EvaluationOptions(BaseModel):
     """Immutable per-query extension registrations; no implicit I/O is performed."""
 
-    model_config = ConfigDict(frozen=True)
-    functions: tuple[CustomFunction, ...] = ()
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    functions: tuple[CustomFunction | CustomMacro, ...] = ()
     trace: Callable[[TraceEvent], None] | None = None
     resolver: Callable[[str], BaseModel | None] | None = None
 
@@ -83,7 +147,7 @@ class EvaluationOptions(BaseModel):
         return self
 
     @cached_property
-    def invocation_table(self) -> dict[str, CustomFunction]:
+    def invocation_table(self) -> dict[str, CustomFunction | CustomMacro]:
         """Cache registration metadata, never inputs from an evaluation."""
         return {function.name: function for function in self.functions}
 

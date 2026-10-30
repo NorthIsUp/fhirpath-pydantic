@@ -6,9 +6,8 @@ retain their Python representations. Invalid FHIR input is rejected at the
 Pydantic boundary. JSON-shaped output and upstream implementation quirks are not
 the compatibility contract.
 
-The built-in native baseline is covered by the checks below. Full extension parity
-still needs deferred-expression arguments and variadic custom callbacks from the
-original invocation metadata contract. This is also **not full HL7 conformance**: the raw audits retain historical result differences, rejected
+The native baseline and callback contracts are covered by the checks below.
+This is **not full HL7 conformance**: the raw audits retain historical result differences, rejected
 inputs and optional newer features instead of converting them into passes or
 disabled tests.
 
@@ -17,18 +16,18 @@ disabled tests.
 | Requirement | Authoritative checks |
 | --- | --- |
 | Native fhir.resources inputs and preserved identity | test_native.py, test_inputs.py and test_model_subclasses.py; serialization and iteration guards |
-| Built-in analogous 2.2.4 feature parity | Complete original corpus; all 87 callable names; all 24 operator entries; all original unit families/pairs; 75 rejected-fixture native equivalents |
+| Analogous 2.2.4 built-in feature parity | Complete original corpus; all 87 callable names; all 24 operator entries; all original unit families/pairs; 75 rejected-fixture native equivalents |
 | Explicit compatibility decisions | Every remaining result/error difference re-executed with reviewed native expectations in test_reviewed_differences.py |
 | No missing baseline feature hidden as unsupported | Every official unsupported reason and its count checked against the actual pinned baseline registry by test_scope.py |
 | String-free native composition | All 22 binary operators plus native type tests run with the parser disabled in test_fluent_surface.py |
+| Custom callback parity | test_callbacks.py and test_macros.py cover eager/deferred arguments, identifier/type names, nullable/lazy behavior, validated ranges/unbounded arities, native focus and lexical scope |
 | Idiomatic Pydantic boundaries and invariants | NativeInput/RootModel, cached TypeAdapters, model/field validators, FHIRPathConstraint, and constrained result-adapter tests |
 | Strict typing without escapes | mise run check: ty all=error, strict Pyright, banned Any/cast imports, disabled type-ignore handling and Ruff |
 | Behavior owned by types; no private module functions | test_architecture.py checks every handwritten runtime module |
 | Efficient native execution | Dump/iteration/revalidation guards, cached plans, isolated concurrent queries, and mise run benchmark measurements |
 | Usable typed distribution | mise run smoke imports the built wheel outside the checkout; checks py.typed, parser/interface files, native profiles and constraints; requires no legacy engine |
 
-These executable checks cover the built-in native contract; the remaining custom
-invocation capabilities are tracked in TODO.md. They do not promise
+These executable checks cover the requested native contract. They do not promise
 all future FHIRPath additions, complete UCUM validation, or byte-compatible legacy
 objects and signatures.
 
@@ -251,6 +250,13 @@ the document functions as Java-reference extensions outside FHIRPath and FHIR's
 additional functions; the test checks those source declarations and their absence
 from the baseline registry. Generic custom functions and tracing remain supported
 through typed EvaluationOptions and have independent native callback tests.
+CustomMacro adds deferred arguments with bound metadata-preserving focus; either
+callback kind accepts closed arity sets or a validated FunctionArity range. An
+unbounded maximum replaces the original variadic registry metadata. Callback
+parameter validation is owned by the caller's Pydantic schemas rather than legacy
+string-named parameter coercers. Native identifier/type arguments are available
+without evaluation. These contracts include lazy branching, outer aggregate/index
+scope, duplicate primitive companions and contained reference resolution.
 
 The raw audits continue to exit nonzero: analogous native parity is a different
 contract from passing every historical or optional HL7 assertion. The reviewed

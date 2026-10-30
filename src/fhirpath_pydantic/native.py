@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from datetime import date, datetime
-from functools import lru_cache
+from functools import cached_property, lru_cache
 from typing import Annotated, Self
 
 from fhir.resources.R4B.resource import Resource as R4BResource
@@ -249,6 +249,37 @@ class NativeCollection(RootModel[list[Item]]):
                 or (index < len(companions) and companions[index] is not None)
             ]
         )
+
+    @cached_property
+    def identities(self) -> dict[int, tuple[Item, ...]]:
+        """Index call-local values without conflating equal primitives or their owners."""
+        result: dict[int, tuple[Item, ...]] = {}
+        for item in self.root:
+            key = id(item.value)
+            result[key] = (*result.get(key, ()), item)
+        return result
+
+    def reframe(self, focus: InputValue, *, index: int | None = None) -> Self:
+        """Retain known FHIR metadata when a callback selects its original native elements."""
+        selected = type(self).from_value(NativeInput.from_value(focus).root)
+        if len(selected.root) == len(self.root) and all(
+            current.value is original.value for current, original in zip(selected.root, self.root, strict=True)
+        ):
+            return self
+        if (
+            len(selected.root) == 1
+            and index is not None
+            and 0 <= index < len(self.root)
+            and selected.root[0].value is self.root[index].value
+        ):
+            return type(self)(root=[self.root[index]])
+        result: list[Item] = []
+        for item in selected.root:
+            candidates = self.identities.get(id(item.value), ())
+            if len(candidates) > 1:
+                raise FHIRPathError("Ambiguous native callback focus; supply its original index")
+            result.append(candidates[0] if candidates else item)
+        return type(self)(root=result)
 
     def member(self, name: str) -> Self:
         """Flatten a field selection across every item in this collection."""

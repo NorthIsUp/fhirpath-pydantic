@@ -112,8 +112,8 @@ weeks through milliseconds are interchangeable; conversion uses Decimal without 
 input precision through unit conversion; exact equality and converted values
 remain exact.
 
-`EvaluationOptions` registers typed `CustomFunction` definitions, a trace sink,
-and a native reference resolver. Handlers receive `FunctionCall` and return native
+`EvaluationOptions` registers eager `CustomFunction` and deferred `CustomMacro`
+definitions, a trace sink, and a native reference resolver. Handlers receive `FunctionCall` and return native
 collections; trace sinks receive `TraceEvent`. Pass `options=` to `compile`,
 `evaluate`, or the typed compile helpers. Registration, argument counts and return
 boundaries are validated with Pydantic. Builtin overrides are supported.
@@ -168,3 +168,49 @@ and runs native queries and Pydantic constraints in a subprocess outside the
 checkout. The probe requires its imports to come from the wheel archive, preserves
 model identity and validator counts, and checks that the legacy engine is not
 loaded. CI runs this check after the full native test and typing gate.
+
+## Deferred and variadic callbacks
+
+Use `CustomMacro` when the callback must choose which expressions evaluate.
+An argument's `evaluate()` uses its bound FHIR focus and retains primitive
+metadata, extensions, resource ownership, `$index` and `$total`. Supply
+`evaluate(new_focus, index=...)` to evaluate per element; the original index
+resolves duplicate scalar provenance. Explicit `None` means an empty focus.
+
+```python
+from pydantic import BaseModel, Field
+from fhirpath_pydantic import CustomMacro, EvaluationOptions, FunctionArity, MacroCall
+from fhirpath_pydantic.types import Collection
+
+class ChoicePolicy(BaseModel):
+    minimum_results: int = Field(default=1, ge=1, strict=True)
+
+    def first_present(self, call: MacroCall) -> Collection:
+        for argument in call.arguments:
+            if len(result := argument.evaluate()) >= self.minimum_results:
+                return result
+        return []
+
+policy = ChoicePolicy()
+options = EvaluationOptions(functions=(
+    CustomMacro(
+        name="firstPresent",
+        handler=policy.first_present,
+        arity=FunctionArity(minimum=1),
+    ),
+))
+```
+
+A tuple such as `arity=(0, 2)` remains a closed set. `FunctionArity(minimum=1,
+maximum=3)` accepts an inclusive range; omitting `maximum` permits unbounded
+arguments. These forms work for eager functions and macros, and arity errors
+occur before any argument evaluates. Pydantic registration dictionaries select
+a macro with `kind="macro"`; the eager default is `kind="function"`. Unknown
+registration/options fields are rejected rather than silently ignored.
+
+Use a Pydantic schema or TypeAdapter inside the handler for scalar argument
+constraints. Deferred arguments also expose `name` for identifier/type arguments
+without evaluating a path. Callback results are native values: model identity is
+preserved, and returned scalars have System types rather than inferred field
+provenance. Generic callback state belongs to the caller; compiled plans never
+cache a call's bound arguments or focus.

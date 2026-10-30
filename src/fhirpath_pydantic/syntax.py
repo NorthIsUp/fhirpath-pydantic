@@ -80,7 +80,11 @@ class Node(BaseModel):
                 self.children
             ):
                 return self.children[0].name_value()
-            case "QualifiedIdentifier" | "InvocationExpression":
+            case "InvocationExpression":
+                return ".".join(
+                    child.name_value() for child in self.children if child.kind != "ThisInvocation" or child.text
+                )
+            case "QualifiedIdentifier":
                 return ".".join(child.name_value() for child in self.children)
             case _:
                 text = self.text.removeprefix("%")

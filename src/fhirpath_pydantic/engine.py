@@ -3,21 +3,22 @@
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import EllipsisType
 from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from fhirpath_pydantic.aggregates import AggregateCollection
-from fhirpath_pydantic.native import Item, children, items, member, values
+from fhirpath_pydantic.native import Item, NativeCollection, children, items, member, values
 from fhirpath_pydantic.operators import OperatorCollection, binary, boolean, equal, integer, number, one, string, unique
-from fhirpath_pydantic.options import EvaluationOptions, TraceEvent
+from fhirpath_pydantic.options import CustomMacro, EvaluationOptions, FunctionArgument, TraceEvent
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.references import ResolutionScope
 from fhirpath_pydantic.scalars import PrimitiveCollection, convert, numeric, strings
 from fhirpath_pydantic.syntax import Node
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.type_info import TypeInfo
-from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
+from fhirpath_pydantic.types import Collection, FHIRPathError, InputValue, UnsupportedFeatureError, Value
 
 
 class State(BaseModel):
@@ -124,10 +125,25 @@ class State(BaseModel):
             raise FHIRPathError("repeat() traversal limit exceeded")
         return items(name == "all") if name in {"all", "exists"} else selected
 
+    def defer(self, node: Node, bound: NativeCollection) -> FunctionArgument:
+        """Bind a deferred argument to this call while isolating each requested focus."""
+
+        def evaluate(focus: InputValue | EllipsisType, index: int | None) -> Collection:
+            collection = bound if isinstance(focus, EllipsisType) else bound.reframe(focus, index=index)
+            state = self.model_copy(
+                update={"context_focus": tuple(collection.root), "index": self.index if index is None else index}
+            )
+            return values(state.evaluate(node, collection.root))
+
+        return FunctionArgument(name=node.name_value(), evaluator=evaluate)
+
     def invoke(self, name: str, args: tuple[Node, ...], focus: list[Item]) -> list[Item]:
         """Check function arity before executing it in this evaluation scope."""
         if (custom := self.options.invocation_table.get(name)) is not None:
             custom.check_arity(len(args))
+            if isinstance(custom, CustomMacro):
+                bound = NativeCollection(root=focus)
+                return items(custom.invoke(values(focus), tuple(self.defer(arg, bound) for arg in args)))
             arguments = tuple(values(self.evaluate(arg, list(self.context_focus))) for arg in args)
             return items(custom.invoke(values(focus), arguments))
         if (arity := _ARITY.get(name)) is None:

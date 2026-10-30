@@ -6,10 +6,22 @@ from sys import modules
 from typing import ClassVar, Self
 
 from fhir.resources.patient import Patient
-from pydantic import model_validator
+from pydantic import BaseModel, Field, model_validator
 
 import fhirpath_pydantic
-from fhirpath_pydantic import FHIRPathConstraint, compile, evaluate, path, var
+from fhirpath_pydantic import (
+    CustomMacro,
+    EvaluationOptions,
+    FHIRPathConstraint,
+    FunctionArity,
+    MacroCall,
+    compile,
+    evaluate,
+    literal,
+    path,
+    var,
+)
+from fhirpath_pydantic.types import Collection
 
 
 class ActivePatient(Patient):
@@ -24,6 +36,19 @@ class ActivePatient(Patient):
         if self.active is not True:
             raise ValueError("An active patient is required")
         return self
+
+
+class ChoicePolicy(BaseModel):
+    """A Pydantic-owned callback policy controls deferred variadic selection."""
+
+    minimum_results: int = Field(default=1, ge=1, strict=True)
+
+    def first_present(self, call: MacroCall) -> Collection:
+        """Return the first populated argument without evaluating later expressions."""
+        for argument in call.arguments:
+            if len(result := argument.evaluate()) >= self.minimum_results:
+                return result
+        return []
 
 
 def main() -> None:
@@ -43,6 +68,13 @@ def main() -> None:
     assert ActivePatient.validations == before, "native type test revalidated the resource"
     assert FHIRPathConstraint(expression="active = true").check(patient) is patient
     assert ActivePatient.validations == before, "constraint revalidated the resource"
+    policy = ChoicePolicy()
+    options = EvaluationOptions(
+        functions=(CustomMacro(name="firstPresent", handler=policy.first_present, arity=FunctionArity(minimum=1)),)
+    )
+    expression = path().call("firstPresent", literal([]), literal(patient), var("undefined"))
+    assert evaluate(None, expression, options=options)[0] is patient
+    assert ActivePatient.validations == before, "macro revalidated the resource"
     assert not any(name == "fhirpathpy" or name.startswith("fhirpathpy.") for name in modules)
     print("Built wheel: native inputs, fluent/text queries, profile validators and constraints passed")
 

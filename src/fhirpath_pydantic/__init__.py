@@ -1,7 +1,16 @@
 """Native typed FHIRPath for fhir.resources and Pydantic v2."""
 
 from fhirpath_pydantic.expressions import BinaryOperator, Expression, literal, path, var
-from fhirpath_pydantic.options import CustomFunction, EvaluationOptions, FunctionCall, TraceEvent
+from fhirpath_pydantic.options import (
+    CustomFunction,
+    CustomMacro,
+    EvaluationOptions,
+    FunctionArgument,
+    FunctionArity,
+    FunctionCall,
+    MacroCall,
+    TraceEvent,
+)
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.query import CompiledQuery, compile, compile_as_array, compile_as_first, evaluate
 from fhirpath_pydantic.temporal import TemporalValue
@@ -15,6 +24,10 @@ __all__ = [
     "InputValue",
     "CompiledQuery",
     "CustomFunction",
+    "CustomMacro",
+    "FunctionArgument",
+    "FunctionArity",
+    "MacroCall",
     "EvaluationOptions",
     "FunctionCall",
     "TraceEvent",
