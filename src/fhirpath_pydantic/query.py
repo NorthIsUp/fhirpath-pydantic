@@ -45,6 +45,7 @@ class CompiledQuery[T](BaseModel):
                 items(resource),
                 State(
                     variables=variables,
+                    context_focus=tuple(items(resource)),
                     options=self.options,
                     resolution=ResolutionScope(resource=variables["rootResource"]),
                 ),

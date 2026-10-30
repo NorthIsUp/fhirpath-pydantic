@@ -5,8 +5,8 @@ from fhir.resources.patient import Patient
 from fhirpathpy import evaluate as upstream_evaluate
 from pydantic import TypeAdapter
 
-from fhirpath_pydantic import FHIRPathError, UnsupportedFeatureError, compile_as_array, compile_as_first, evaluate
-from fhirpath_pydantic.types import Value
+from fhirpath_pydantic import FHIRPathError, UnsupportedFeatureError, compile_as_array, compile_as_first, evaluate, path
+from fhirpath_pydantic.types import Collection, Value
 
 _PAYLOAD = TypeAdapter[dict[str, Value]](dict[str, Value])
 
@@ -121,3 +121,26 @@ def test_native_input_unchanged() -> None:
     assert resource.model_dump() == snapshot
     with pytest.raises(FHIRPathError, match="singleton"):
         evaluate(None, "(1 | 2).is(Integer)")
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("name.first().subsetOf($this.name)", [True]),
+        ("name.first().supersetOf($this.name)", [False]),
+        ("name.first().given.combine(name.last().given)", ["Ada", "Grace"]),
+        ("name.select(given.first().combine(given.last()))", ["Ada", "Ada", "Grace", "Grace"]),
+        ("name.where(given.first().subsetOf(given)).given", ["Ada", "Grace"]),
+    ],
+)
+def test_function_arguments_use_lexical_context(expression: str, expected: Collection) -> None:
+    """Navigation changes a function's receiver without replacing its argument context."""
+    patient = Patient.model_validate({"name": [{"given": ["Ada"]}, {"given": ["Grace"]}]})
+    assert evaluate(patient, expression) == expected
+
+
+def test_fluent_arguments_share_textual_context() -> None:
+    """String-free calls obey the same argument scope as parsed syntax."""
+    patient = Patient.model_validate({"name": [{"given": ["Ada"]}, {"given": ["Grace"]}]})
+    expression = path("name").first().call("subsetOf", path("name"))
+    assert evaluate(patient, expression) == [True]

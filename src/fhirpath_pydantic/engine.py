@@ -23,6 +23,7 @@ class State(BaseModel):
     variables: dict[str, Value] = Field(default_factory=dict)
     options: EvaluationOptions = Field(default_factory=EvaluationOptions)
     resolution: ResolutionScope = Field(default_factory=ResolutionScope)
+    context_focus: tuple[Item, ...] = ()
     index: int = 0
     total: tuple[Item, ...] = ()
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -52,7 +53,9 @@ class State(BaseModel):
             total = evaluate_node(args[1], focus, self) if len(args) > 1 else []
             for index, item in enumerate(focus):
                 total = evaluate_node(
-                    accumulator, [item], self.model_copy(update={"index": index, "total": tuple(total)})
+                    accumulator,
+                    [item],
+                    self.model_copy(update={"index": index, "total": tuple(total), "context_focus": (item,)}),
                 )
             return total
         selected: list[Item] = []
@@ -61,7 +64,9 @@ class State(BaseModel):
         for _ in range(1000):
             projected: list[Item] = []
             for index, item in enumerate(frontier):
-                result = evaluate_node(args[0], [item], self.model_copy(update={"index": index}))
+                result = evaluate_node(
+                    args[0], [item], self.model_copy(update={"index": index, "context_focus": (item,)})
+                )
                 match name:
                     case "where":
                         if boolean(result) is True:
@@ -97,7 +102,7 @@ class State(BaseModel):
         """Check function arity before executing it in this evaluation scope."""
         if (custom := self.options.invocation_table.get(name)) is not None:
             custom.check_arity(len(args))
-            arguments = tuple(values(self.evaluate(arg, focus)) for arg in args)
+            arguments = tuple(values(self.evaluate(arg, list(self.context_focus))) for arg in args)
             return items(custom.invoke(values(focus), arguments))
         if (arity := _ARITY.get(name)) is None:
             raise UnsupportedFeatureError(f"Unsupported FHIRPath function: {name}")
@@ -106,12 +111,14 @@ class State(BaseModel):
         if name in {"where", "select", "exists", "all", "repeat", "aggregate"}:
             return self.iterate(name, args, focus)
         if name == "iif":
-            condition = evaluate_node(args[0], focus, self)
+            state = self.model_copy(update={"context_focus": tuple(focus)})
+            condition = evaluate_node(args[0], focus, state)
             branch = args[1] if boolean(condition) is True else args[2] if len(args) == 3 else None
-            return evaluate_node(branch, focus, self) if branch else []
+            return evaluate_node(branch, focus, state) if branch else []
         if name == "coalesce":
+            state = self.model_copy(update={"context_focus": tuple(focus)})
             for arg in args:
-                if result := evaluate_node(arg, focus, self):
+                if result := evaluate_node(arg, focus, state):
                     return result
             return []
         if name in {"ofType", "is", "as"}:
@@ -123,12 +130,16 @@ class State(BaseModel):
             matches = is_type(one(focus), target)
             return items(matches) if name == "is" else focus if matches else []
         if name == "trace":
-            label = string(self.evaluate(args[0], focus)) if args else ""
+            label = string(self.evaluate(args[0], list(self.context_focus))) if args else ""
             if self.options.trace is not None:
-                projected = self.evaluate(args[1], focus) if len(args) > 1 else focus
+                projected = (
+                    self.model_copy(update={"context_focus": tuple(focus)}).evaluate(args[1], focus)
+                    if len(args) > 1
+                    else focus
+                )
                 self.options.trace(TraceEvent(label=label, values=values(projected)))
             return focus
-        params = [evaluate_node(arg, focus, self) for arg in args]
+        params = [evaluate_node(arg, list(self.context_focus), self) for arg in args]
         match name:
             case "resolve":
                 return self.resolve(focus)
@@ -244,7 +255,7 @@ class State(BaseModel):
             case "MemberInvocation":
                 return member(focus, node.children[0].text.strip("`"))
             case "ThisInvocation":
-                return focus
+                return list(self.context_focus)
             case "IndexInvocation":
                 return items(self.index)
             case "TotalInvocation":
