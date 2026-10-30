@@ -214,6 +214,8 @@ class OperatorCollection(NativeCollection):
             value = one(singleton)
             return items(any(equal(value, other.system_value()) for other in collection))
         a, b = one(left), one(right)
+        if a is None or b is None:
+            return []
         if operator in {"<", "<=", ">", ">="}:
             comparison = ScalarValue.model_construct(root=a).compare(b)
             if comparison is None:

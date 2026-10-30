@@ -48,8 +48,21 @@ class Node(BaseModel):
         return re.sub(
             r"\\(u[0-9A-Fa-f]{4}|.)",
             lambda match: chr(int(match[1][1:], 16)) if match[1].startswith("u") else escapes.get(match[1], match[1]),
-            self.text[1:-1],
+            self.text.removeprefix("%")[1:-1],
         )
+
+    def name_value(self) -> str:
+        """Decode names and qualified segments before runtime lookup."""
+        match self.kind:
+            case "TypeSpecifier" | "ExternalConstant" | "TermExpression" | "InvocationTerm" | "MemberInvocation" if (
+                self.children
+            ):
+                return self.children[0].name_value()
+            case "QualifiedIdentifier" | "InvocationExpression":
+                return ".".join(child.name_value() for child in self.children)
+            case _:
+                text = self.text.removeprefix("%")
+                return self.string_value() if text.startswith(("`", "'")) else text
 
     @classmethod
     @lru_cache(maxsize=512)

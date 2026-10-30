@@ -125,7 +125,7 @@ class State(BaseModel):
                     return result
             return []
         if name in {"ofType", "is", "as"}:
-            target = args[0].text.replace("`", "")
+            target = args[0].name_value()
             if name == "ofType":
                 return [item for item in focus if item.is_type(target, implicit=True)]
             if not focus:
@@ -170,6 +170,8 @@ class State(BaseModel):
                 one(focus)
                 return focus
             case "skip" | "take":
+                if not params[0]:
+                    return []
                 count = max(0, integer(params[0]))
                 return focus[count:] if name == "skip" else focus[:count]
             case "not":
@@ -263,7 +265,7 @@ class State(BaseModel):
                     focus = evaluate_node(child, focus, self)
                 return focus
             case "MemberInvocation":
-                return member(focus, node.children[0].text.strip("`"))
+                return member(focus, node.children[0].name_value())
             case "ThisInvocation":
                 return list(self.context_focus)
             case "IndexInvocation":
@@ -271,9 +273,7 @@ class State(BaseModel):
             case "TotalInvocation":
                 return list(self.total)
             case "ExternalConstantTerm" | "Variable":
-                name = (
-                    node.children[0].children[0].text.strip("`'") if node.kind == "ExternalConstantTerm" else node.text
-                )
+                name = node.children[0].name_value() if node.kind == "ExternalConstantTerm" else node.text
                 if name not in self.variables:
                     raise FHIRPathError(f"Undefined environment variable: {name}")
                 return items(self.variables[name])
@@ -314,7 +314,7 @@ class State(BaseModel):
             case "FunctionInvocation":
                 function = node.children[0]
                 assert function.children
-                name = function.children[0].text.strip("`")
+                name = function.children[0].name_value()
                 args = function.children[1].children if len(function.children) > 1 else ()
                 return self.invoke(name, args, focus)
             case "Call":
@@ -324,7 +324,7 @@ class State(BaseModel):
                 if not collection:
                     return []
                 one(collection)
-                matches = collection[0].is_type(node.children[1].text.replace("`", ""), implicit=node.tokens[0] == "as")
+                matches = collection[0].is_type(node.children[1].name_value(), implicit=node.tokens[0] == "as")
                 return items(matches) if node.tokens[0] == "is" else collection if matches else []
             case (
                 "UnionExpression"

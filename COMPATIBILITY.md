@@ -33,7 +33,7 @@ case in that family passes the official suites.
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Original fhirpathpy YAML | 1,545 | 1,382 | 18 | 0 | 75 | 70 |
-| Official HL7 R4/R4B/R5 XML | 3,613 | 2,730 | 158 | 690 | 35 | 0 |
+| Official HL7 R4/R4B/R5 XML | 3,613 | 2,753 | 135 | 690 | 35 | 0 |
 
 Run `mise run parity` and `mise run parity:hl7` to reproduce the complete JSON
 reports under `dist/`. Both commands currently exit nonzero. Error assertions
@@ -52,7 +52,9 @@ including `lowBoundary`, `highBoundary`, `precision`, `sort`, `defineVariable`,
 `matchesFull`, `escape`, `unescape`, terminology/profile functions, and specialized
 static, document, HTML and CDA evaluation modes. These remain unsupported rather
 than silently emulated. The report also exposes ordinary function edge cases that
-still need correction, including escaped identifiers and extension-only primitives.
+still need correction, including Quantity scalar operations and indeterminate collection equality. Escaped
+member/function/type/variable names and extension-only primitive scalar propagation
+have native regression coverage in `test_syntax.py` and `test_boundaries.py`.
 
 ## Unit and execution boundaries
 

@@ -8,6 +8,7 @@ from typing import Annotated, Self, override
 import pytest
 from fhir.resources.humanname import HumanName
 from fhir.resources.patient import Patient
+from fhir.resources.R4B.patient import Patient as R4BPatient
 from pydantic import BaseModel, PrivateAttr, TypeAdapter, ValidationError, model_validator
 
 from fhirpath_pydantic import CompiledQuery, FHIRPathError, compile, evaluate, literal, path
@@ -52,6 +53,10 @@ from fhirpath_pydantic.types import Collection, NativeModel, Value
         ("{}.toString()", []),
         ("{}.toInteger()", []),
         ("{}.sqrt()", []),
+        ("(0 | 1 | 2).skip({})", []),
+        ("{}.skip({})", []),
+        ("(0 | 1 | 2).take({})", []),
+        ("{}.take({})", []),
         ("(-1).sqrt()", []),
         ("1.exp() > 2", [True]),
         ("1.ln()", [Decimal(0)]),
@@ -258,3 +263,32 @@ def test_native_constraint_respects_declared_model_class() -> None:
     assert model.validations == 1
     with pytest.raises(ValidationError):
         adapter.validate_python(Patient(active=True))
+
+
+@pytest.mark.parametrize("resource_type", [Patient, R4BPatient])
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "name.given.first().length()",
+        "name.given.first().toChars()",
+        "name.given.first().substring(0, 1)",
+        "name.given.first().upper()",
+        "name.given.first().toString()",
+        "name.given.first().convertsToString()",
+        "name.given.first() < 'x'",
+        "name.given.first() + 'x'",
+        "multipleBirthInteger.abs()",
+        "multipleBirthInteger + 1",
+    ],
+)
+def test_extension_only_scalar_operations(resource_type: type[Patient] | type[R4BPatient], expression: str) -> None:
+    """Primitive operations propagate absent scalar values while retaining elements."""
+    patient = resource_type.model_validate(
+        {
+            "name": [{"_given": [{"extension": [{"url": "http://example.org/absent", "valueCode": "unknown"}]}]}],
+            "_multipleBirthInteger": {"extension": [{"url": "http://example.org/absent", "valueCode": "unknown"}]},
+        }
+    )
+    assert evaluate(patient, "name.given.exists()") == [True]
+    assert evaluate(patient, "name.given.first().extension.value") == ["unknown"]
+    assert evaluate(patient, expression) == []

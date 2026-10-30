@@ -27,7 +27,8 @@ class PrimitiveCollection(NativeCollection):
         focus = self.root
         if not focus:
             return []
-        value = one(focus)
+        if (value := one(focus)) is None:
+            return []
         target = name.removeprefix("convertsTo").removeprefix("to")
         result: Value = None
         try:
@@ -104,7 +105,9 @@ class PrimitiveCollection(NativeCollection):
         focus = self.root
         if not focus:
             return []
-        value = number(one(focus))
+        if (native := one(focus)) is None:
+            return []
+        value = number(native)
         try:
             match name:
                 case "abs":
@@ -147,7 +150,7 @@ class PrimitiveCollection(NativeCollection):
         """Delegate checked singleton text transformations to the string owner."""
         focus = self.root
         required = params[:1] if name == "substring" else params
-        if not focus or any(not parameter for parameter in required):
+        if one(focus) is None or any(one(parameter) is None for parameter in required):
             return []
         return items(StringValue.model_validate(string(focus)).transform(name, params))
 
