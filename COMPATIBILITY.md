@@ -32,8 +32,8 @@ case in that family passes the official suites.
 
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Original fhirpathpy YAML | 1,545 | 1,381 | 19 | 0 | 75 | 70 |
-| Official HL7 R4/R4B/R5 XML | 3,613 | 2,794 | 94 | 690 | 35 | 0 |
+| Original fhirpathpy YAML | 1,545 | 1,378 | 22 | 0 | 75 | 70 |
+| Official HL7 R4/R4B/R5 XML | 3,613 | 2,815 | 73 | 690 | 35 | 0 |
 
 Run `mise run parity` and `mise run parity:hl7` to reproduce the complete JSON
 reports under `dist/`. Both commands currently exit nonzero. Error assertions
@@ -47,6 +47,9 @@ Some remaining YAML differences are intentional native behavior: declared FHIR
 primitive identity, full native timestamp precision, and calendar versus definite
 durations. A legacy assertion also expects `System.Patient` to return false; the
 native evaluator rejects that unresolved type name (`FHIR.Patient` is valid).
+Three more legacy assertions use the old grammar precedence. Native `is` and `as`
+bind after arithmetic and before union or comparison, as specified by the
+[normative precedence table](https://hl7.org/fhirpath/N1/index.html).
 The outstanding failures still require case-by-case review.
 
 The newer official corpus also exercises features absent from the 2.2.4 baseline,
@@ -67,6 +70,16 @@ Escaped member/function/type/variable names and extension-only primitive scalar 
 have native regression coverage in `test_syntax.py` and `test_boundaries.py`.
 Quantity `abs()`, native unit-text comparisons, conditional receiver cardinality
 and compile-time Unicode escape validation also have regression coverage.
+
+Regex operations use Python Unicode single-line semantics. Substitutions support
+`$1`, `${1}` and `${name}` (with Python `(?P<name>...)` capture syntax), preserve
+literal backslashes, and report malformed patterns or group references as
+`FHIRPathError`. Empty regex replacement leaves the input unchanged.
+
+Standard FHIR variables `%sct`, `%loinc` and `%ucum`, together with quoted
+`vs-[id]` and `ext-[id]` variable names, resolve without caller configuration. Explicit bindings take
+precedence and remain call-local. See `test_variables.py` and the
+[FHIR environment variable definitions](https://hl7.org/fhir/fhirpath.html).
 
 Fractional-second DateTime arithmetic preserves the fractional value. The pinned
 R5 suite expects this; the older R4/R4B suites expect fractional seconds to be

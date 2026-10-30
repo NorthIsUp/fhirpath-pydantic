@@ -45,6 +45,28 @@ class StringValue(RootModel[str]):
         except ValueError as error:
             raise FHIRPathError("Invalid encoded text or UTF-8 sequence") from error
 
+    @staticmethod
+    def pattern(expression: str) -> re.Pattern[str]:
+        """Compile single-line Unicode regexes with a domain-owned error boundary."""
+        try:
+            return re.compile(expression, flags=re.DOTALL)
+        except re.PatternError as error:
+            raise FHIRPathError("Invalid regular expression") from error
+
+    def replace_matches(self, pattern: str, substitution: str) -> str:
+        """Expand numbered or named capture references while preserving literal backslashes."""
+        if not pattern:
+            return self.root
+        replacement = re.sub(
+            r"\$(?:\{([A-Za-z_]\w*|\d+)\}|(\d+))",
+            r"\\g<\1\2>",
+            substitution.replace("\\", "\\\\"),
+        )
+        try:
+            return self.pattern(pattern).sub(replacement, self.root)
+        except (re.PatternError, IndexError) as error:
+            raise FHIRPathError("Invalid regular expression or replacement group") from error
+
     def transform(self, name: str, params: list[list[Item]]) -> Value:
         """Apply a text operation after its collection contract has been checked."""
         value = self.root
@@ -75,12 +97,11 @@ class StringValue(RootModel[str]):
             case "indexOf":
                 return value.find(string(params[0]))
             case "matches":
-                return re.search(string(params[0]), value, flags=re.DOTALL) is not None
+                return self.pattern(string(params[0])).search(value) is not None
             case "replace":
                 return value.replace(string(params[0]), string(params[1]))
             case "replaceMatches":
-                replacement = re.sub(r"\$(\d+)", r"\\g<\1>", string(params[1]))
-                return re.sub(string(params[0]), replacement, value)
+                return self.replace_matches(string(params[0]), string(params[1]))
             case "split":
                 separator = string(params[0])
                 parts: list[Value] = list(value.split(separator) if separator else value)

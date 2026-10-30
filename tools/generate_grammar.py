@@ -2,7 +2,6 @@
 
 from hashlib import sha256
 from pathlib import Path
-from shutil import copyfile
 from subprocess import run
 from tempfile import TemporaryDirectory
 from urllib.request import urlretrieve
@@ -44,7 +43,9 @@ class GrammarGeneration(BaseModel):
             )
             self.destination.mkdir(parents=True, exist_ok=True)
             for name in ("FHIRPathLexer.py", "FHIRPathParser.py"):
-                copyfile(Path(generated) / name, self.destination / name)
+                source = (Path(generated) / name).read_text()
+                normalized = "\n".join(line.rstrip() for line in source.splitlines()) + "\n"
+                (self.destination / name).write_text(normalized)
 
 
 if __name__ == "__main__":

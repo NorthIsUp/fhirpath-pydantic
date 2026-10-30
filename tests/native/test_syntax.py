@@ -43,3 +43,23 @@ def test_invalid_unicode_rejected_during_compilation(expression: str) -> None:
 def test_literal_escape_decoding(expression: str, expected: str) -> None:
     """Escaped backslashes are literal and unknown escapes retain their character."""
     assert evaluate(None, expression) == [expected]
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("(1 | 1 is Integer).count()", [2]),
+        ("(1 | 2 as Integer).count()", [2]),
+        ("1 + 2 is Integer", [True]),
+        ("(1 > 2) is Boolean", [True]),
+    ],
+)
+def test_type_operator_precedence(expression: str, expected: list[int | bool]) -> None:
+    """Type operators bind after arithmetic and before union or comparison."""
+    assert evaluate(None, expression) == expected
+
+
+def test_comparison_does_not_bind_before_type_operator() -> None:
+    """Unparenthesized type tests do not turn the entire comparison into a Boolean test."""
+    with pytest.raises(FHIRPathError):
+        evaluate(None, "1 > 2 is Boolean")

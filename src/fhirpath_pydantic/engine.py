@@ -1,7 +1,9 @@
 """Per-evaluation state and native FHIRPath syntax evaluation."""
 
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,6 +24,15 @@ class State(BaseModel):
     """Call-local focus and variables, never shared between compiled evaluations."""
 
     model_config = ConfigDict(frozen=True)
+    STANDARD_VARIABLES: ClassVar[dict[str, str]] = {
+        "sct": "http://snomed.info/sct",
+        "loinc": "http://loinc.org",
+        "ucum": "http://unitsofmeasure.org",
+    }
+    CANONICAL_VARIABLES: ClassVar[dict[str, str]] = {
+        "vs-": "http://hl7.org/fhir/ValueSet/",
+        "ext-": "http://hl7.org/fhir/StructureDefinition/",
+    }
     variables: dict[str, Value] = Field(default_factory=dict)
     options: EvaluationOptions = Field(default_factory=EvaluationOptions)
     resolution: ResolutionScope = Field(default_factory=ResolutionScope)
@@ -29,6 +40,17 @@ class State(BaseModel):
     index: int = 0
     total: tuple[Item, ...] = ()
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def variable(self, name: str) -> Value:
+        """Resolve call-local overrides before standard FHIR canonical identifiers."""
+        if name in self.variables:
+            return self.variables[name]
+        if (value := self.STANDARD_VARIABLES.get(name)) is not None:
+            return value
+        for prefix, base in self.CANONICAL_VARIABLES.items():
+            if name.startswith(prefix) and re.fullmatch(r"[A-Za-z0-9.-]{1,64}", suffix := name[len(prefix) :]):
+                return base + suffix
+        raise FHIRPathError(f"Undefined environment variable: {name}")
 
     def resolve(self, focus: list[Item]) -> list[Item]:
         """Resolve local native references before consulting an explicit caller callback."""
@@ -279,9 +301,7 @@ class State(BaseModel):
                 return list(self.total)
             case "ExternalConstantTerm" | "Variable":
                 name = node.children[0].name_value() if node.kind == "ExternalConstantTerm" else node.text
-                if name not in self.variables:
-                    raise FHIRPathError(f"Undefined environment variable: {name}")
-                return items(self.variables[name])
+                return items(self.variable(name))
             case "BooleanLiteral":
                 return items(node.text == "true")
             case "NumberLiteral":

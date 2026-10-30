@@ -41,6 +41,11 @@ from fhirpath_pydantic.types import Collection
         ("{}.encode('base64')", []),
         ("{}.decode('base64')", []),
         ("'ab'.replaceMatches('(a)(b)', '$2$1')", ["ba"]),
+        ("'abc'.replaceMatches('', 'x')", ["abc"]),
+        ("'a\\nb'.replaceMatches('a.b', 'x')", ["x"]),
+        ("'ab'.replaceMatches('(?P<first>a)(?P<second>b)', '${second}-${first}')", ["b-a"]),
+        ("'ab'.replaceMatches('(a)(b)', '${2}${1}')", ["ba"]),
+        (r"'ab'.replaceMatches('(a)(b)', '\\n$1')", [r"\na"]),
         ("'a\\nb'.matches('a.b')", [True]),
     ],
 )
@@ -51,7 +56,16 @@ def test_utility_functions(expression: str, expected: Collection) -> None:
 
 @pytest.mark.parametrize(
     "expression",
-    ["(1 | 'x').sum()", "true.avg()", "(1 | 2).encode('hex')", "'xx'.decode('hex')", "'!!!'.decode('base64')"],
+    [
+        "(1 | 'x').sum()",
+        "true.avg()",
+        "(1 | 2).encode('hex')",
+        "'xx'.decode('hex')",
+        "'!!!'.decode('base64')",
+        "'abc'.matches('[')",
+        "'abc'.replaceMatches('[', 'x')",
+        "'a'.replaceMatches('(a)', '$2')",
+    ],
 )
 def test_utility_contract_errors(expression: str) -> None:
     """Invalid scalar types, cardinality and encodings fail explicitly."""

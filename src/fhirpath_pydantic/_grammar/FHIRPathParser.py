@@ -22,22 +22,22 @@ def serializedATN():
         8,131,8,8,1,9,1,9,1,9,3,9,136,8,9,1,10,1,10,1,11,1,11,1,12,1,12,
         1,13,1,13,1,13,5,13,147,8,13,10,13,12,13,150,9,13,1,14,1,14,1,14,
         0,1,2,15,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,0,12,1,0,4,5,1,
-        0,6,9,2,0,4,5,10,10,1,0,12,15,1,0,18,21,1,0,22,23,1,0,25,26,1,0,
-        16,17,1,0,32,33,1,0,39,46,1,0,47,54,3,0,16,17,22,23,57,58,171,0,
+        0,6,9,2,0,4,5,10,10,1,0,14,17,1,0,18,21,1,0,22,23,1,0,25,26,1,0,
+        11,12,1,0,32,33,1,0,39,46,1,0,47,54,3,0,11,12,22,23,57,58,171,0,
         30,1,0,0,0,2,37,1,0,0,0,4,89,1,0,0,0,6,99,1,0,0,0,8,101,1,0,0,0,
         10,111,1,0,0,0,12,113,1,0,0,0,14,120,1,0,0,0,16,128,1,0,0,0,18,135,
         1,0,0,0,20,137,1,0,0,0,22,139,1,0,0,0,24,141,1,0,0,0,26,143,1,0,
         0,0,28,151,1,0,0,0,30,31,3,2,1,0,31,32,5,0,0,1,32,1,1,0,0,0,33,34,
         6,1,-1,0,34,38,3,4,2,0,35,36,7,0,0,0,36,38,3,2,1,11,37,33,1,0,0,
         0,37,35,1,0,0,0,38,79,1,0,0,0,39,40,10,10,0,0,40,41,7,1,0,0,41,78,
-        3,2,1,11,42,43,10,9,0,0,43,44,7,2,0,0,44,78,3,2,1,10,45,46,10,8,
-        0,0,46,47,5,11,0,0,47,78,3,2,1,9,48,49,10,7,0,0,49,50,7,3,0,0,50,
-        78,3,2,1,8,51,52,10,5,0,0,52,53,7,4,0,0,53,78,3,2,1,6,54,55,10,4,
+        3,2,1,11,42,43,10,9,0,0,43,44,7,2,0,0,44,78,3,2,1,10,45,46,10,7,
+        0,0,46,47,5,13,0,0,47,78,3,2,1,8,48,49,10,6,0,0,49,50,7,3,0,0,50,
+        78,3,2,1,7,51,52,10,5,0,0,52,53,7,4,0,0,53,78,3,2,1,6,54,55,10,4,
         0,0,55,56,7,5,0,0,56,78,3,2,1,5,57,58,10,3,0,0,58,59,5,24,0,0,59,
         78,3,2,1,4,60,61,10,2,0,0,61,62,7,6,0,0,62,78,3,2,1,3,63,64,10,1,
         0,0,64,65,5,27,0,0,65,78,3,2,1,2,66,67,10,13,0,0,67,68,5,1,0,0,68,
         78,3,10,5,0,69,70,10,12,0,0,70,71,5,2,0,0,71,72,3,2,1,0,72,73,5,
-        3,0,0,73,78,1,0,0,0,74,75,10,6,0,0,75,76,7,7,0,0,76,78,3,24,12,0,
+        3,0,0,73,78,1,0,0,0,74,75,10,8,0,0,75,76,7,7,0,0,76,78,3,24,12,0,
         77,39,1,0,0,0,77,42,1,0,0,0,77,45,1,0,0,0,77,48,1,0,0,0,77,51,1,
         0,0,0,77,54,1,0,0,0,77,57,1,0,0,0,77,60,1,0,0,0,77,63,1,0,0,0,77,
         66,1,0,0,0,77,69,1,0,0,0,77,74,1,0,0,0,78,81,1,0,0,0,79,77,1,0,0,
@@ -77,32 +77,32 @@ class FHIRPathParser ( Parser ):
 
     sharedContextCache = PredictionContextCache()
 
-    literalNames = [ "<INVALID>", "'.'", "'['", "']'", "'+'", "'-'", "'*'", 
-                     "'/'", "'div'", "'mod'", "'&'", "'|'", "'<='", "'<'", 
-                     "'>'", "'>='", "'is'", "'as'", "'='", "'~'", "'!='", 
-                     "'!~'", "'in'", "'contains'", "'and'", "'or'", "'xor'", 
-                     "'implies'", "'('", "')'", "'{'", "'}'", "'true'", 
-                     "'false'", "'%'", "'$this'", "'$index'", "'$total'", 
-                     "','", "'year'", "'month'", "'week'", "'day'", "'hour'", 
-                     "'minute'", "'second'", "'millisecond'", "'years'", 
-                     "'months'", "'weeks'", "'days'", "'hours'", "'minutes'", 
+    literalNames = [ "<INVALID>", "'.'", "'['", "']'", "'+'", "'-'", "'*'",
+                     "'/'", "'div'", "'mod'", "'&'", "'is'", "'as'", "'|'",
+                     "'<='", "'<'", "'>'", "'>='", "'='", "'~'", "'!='",
+                     "'!~'", "'in'", "'contains'", "'and'", "'or'", "'xor'",
+                     "'implies'", "'('", "')'", "'{'", "'}'", "'true'",
+                     "'false'", "'%'", "'$this'", "'$index'", "'$total'",
+                     "','", "'year'", "'month'", "'week'", "'day'", "'hour'",
+                     "'minute'", "'second'", "'millisecond'", "'years'",
+                     "'months'", "'weeks'", "'days'", "'hours'", "'minutes'",
                      "'seconds'", "'milliseconds'" ]
 
-    symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "DATETIME", 
-                      "TIME", "IDENTIFIER", "DELIMITEDIDENTIFIER", "STRING", 
+    symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "DATETIME",
+                      "TIME", "IDENTIFIER", "DELIMITEDIDENTIFIER", "STRING",
                       "NUMBER", "WS", "COMMENT", "LINE_COMMENT" ]
 
     RULE_entireExpression = 0
@@ -121,9 +121,9 @@ class FHIRPathParser ( Parser ):
     RULE_qualifiedIdentifier = 13
     RULE_identifier = 14
 
-    ruleNames =  [ "entireExpression", "expression", "term", "literal", 
-                   "externalConstant", "invocation", "functn", "paramList", 
-                   "quantity", "unit", "dateTimePrecision", "pluralDateTimePrecision", 
+    ruleNames =  [ "entireExpression", "expression", "term", "literal",
+                   "externalConstant", "invocation", "functn", "paramList",
+                   "quantity", "unit", "dateTimePrecision", "pluralDateTimePrecision",
                    "typeSpecifier", "qualifiedIdentifier", "identifier" ]
 
     EOF = Token.EOF
@@ -250,7 +250,7 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_expression
 
-     
+
         def copyFrom(self, ctx:ParserRuleContext):
             super().copyFrom(ctx)
 
@@ -459,7 +459,7 @@ class FHIRPathParser ( Parser ):
             self.state = 37
             self._errHandler.sync(self)
             token = self._input.LA(1)
-            if token in [16, 17, 22, 23, 28, 30, 32, 33, 34, 35, 36, 37, 55, 56, 57, 58, 59, 60]:
+            if token in [11, 12, 22, 23, 28, 30, 32, 33, 34, 35, 36, 37, 55, 56, 57, 58, 59, 60]:
                 localctx = FHIRPathParser.TermExpressionContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
@@ -536,31 +536,31 @@ class FHIRPathParser ( Parser ):
                         localctx = FHIRPathParser.UnionExpressionContext(self, FHIRPathParser.ExpressionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expression)
                         self.state = 45
-                        if not self.precpred(self._ctx, 8):
+                        if not self.precpred(self._ctx, 7):
                             from antlr4.error.Errors import FailedPredicateException
-                            raise FailedPredicateException(self, "self.precpred(self._ctx, 8)")
+                            raise FailedPredicateException(self, "self.precpred(self._ctx, 7)")
                         self.state = 46
-                        self.match(FHIRPathParser.T__10)
+                        self.match(FHIRPathParser.T__12)
                         self.state = 47
-                        self.expression(9)
+                        self.expression(8)
                         pass
 
                     elif la_ == 4:
                         localctx = FHIRPathParser.InequalityExpressionContext(self, FHIRPathParser.ExpressionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expression)
                         self.state = 48
-                        if not self.precpred(self._ctx, 7):
+                        if not self.precpred(self._ctx, 6):
                             from antlr4.error.Errors import FailedPredicateException
-                            raise FailedPredicateException(self, "self.precpred(self._ctx, 7)")
+                            raise FailedPredicateException(self, "self.precpred(self._ctx, 6)")
                         self.state = 49
                         _la = self._input.LA(1)
-                        if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 61440) != 0)):
+                        if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 245760) != 0)):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
                         self.state = 50
-                        self.expression(8)
+                        self.expression(7)
                         pass
 
                     elif la_ == 5:
@@ -675,12 +675,12 @@ class FHIRPathParser ( Parser ):
                         localctx = FHIRPathParser.TypeExpressionContext(self, FHIRPathParser.ExpressionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expression)
                         self.state = 74
-                        if not self.precpred(self._ctx, 6):
+                        if not self.precpred(self._ctx, 8):
                             from antlr4.error.Errors import FailedPredicateException
-                            raise FailedPredicateException(self, "self.precpred(self._ctx, 6)")
+                            raise FailedPredicateException(self, "self.precpred(self._ctx, 8)")
                         self.state = 75
                         _la = self._input.LA(1)
-                        if not(_la==16 or _la==17):
+                        if not(_la==11 or _la==12):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
@@ -689,7 +689,7 @@ class FHIRPathParser ( Parser ):
                         self.typeSpecifier()
                         pass
 
-             
+
                 self.state = 81
                 self._errHandler.sync(self)
                 _alt = self._interp.adaptivePredict(self._input,2,self._ctx)
@@ -714,7 +714,7 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_term
 
-     
+
         def copyFrom(self, ctx:ParserRuleContext):
             super().copyFrom(ctx)
 
@@ -773,7 +773,7 @@ class FHIRPathParser ( Parser ):
             self.state = 89
             self._errHandler.sync(self)
             token = self._input.LA(1)
-            if token in [16, 17, 22, 23, 35, 36, 37, 57, 58]:
+            if token in [11, 12, 22, 23, 35, 36, 37, 57, 58]:
                 localctx = FHIRPathParser.InvocationTermContext(self, localctx)
                 self.enterOuterAlt(localctx, 1)
                 self.state = 82
@@ -824,7 +824,7 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_literal
 
-     
+
         def copyFrom(self, ctx:ParserRuleContext):
             super().copyFrom(ctx)
 
@@ -1004,7 +1004,7 @@ class FHIRPathParser ( Parser ):
             self.state = 104
             self._errHandler.sync(self)
             token = self._input.LA(1)
-            if token in [16, 17, 22, 23, 57, 58]:
+            if token in [11, 12, 22, 23, 57, 58]:
                 self.state = 102
                 self.identifier()
                 pass
@@ -1035,7 +1035,7 @@ class FHIRPathParser ( Parser ):
         def getRuleIndex(self):
             return FHIRPathParser.RULE_invocation
 
-     
+
         def copyFrom(self, ctx:ParserRuleContext):
             super().copyFrom(ctx)
 
@@ -1176,7 +1176,7 @@ class FHIRPathParser ( Parser ):
             self.state = 116
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            if (((_la) & ~0x3f) == 0 and ((1 << _la) & 2269814484132626480) != 0):
+            if (((_la) & ~0x3f) == 0 and ((1 << _la) & 2269814484132436016) != 0):
                 self.state = 115
                 self.paramList()
 
@@ -1490,7 +1490,7 @@ class FHIRPathParser ( Parser ):
                     self.state = 144
                     self.match(FHIRPathParser.T__0)
                     self.state = 145
-                    self.identifier() 
+                    self.identifier()
                 self.state = 150
                 self._errHandler.sync(self)
                 _alt = self._interp.adaptivePredict(self._input,11,self._ctx)
@@ -1532,7 +1532,7 @@ class FHIRPathParser ( Parser ):
             self.enterOuterAlt(localctx, 1)
             self.state = 151
             _la = self._input.LA(1)
-            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 432345564240347136) != 0)):
+            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 432345564240156672) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)
@@ -1560,51 +1560,51 @@ class FHIRPathParser ( Parser ):
     def expression_sempred(self, localctx:ExpressionContext, predIndex:int):
             if predIndex == 0:
                 return self.precpred(self._ctx, 10)
-         
+
 
             if predIndex == 1:
                 return self.precpred(self._ctx, 9)
-         
+
 
             if predIndex == 2:
-                return self.precpred(self._ctx, 8)
-         
+                return self.precpred(self._ctx, 7)
+
 
             if predIndex == 3:
-                return self.precpred(self._ctx, 7)
-         
+                return self.precpred(self._ctx, 6)
+
 
             if predIndex == 4:
                 return self.precpred(self._ctx, 5)
-         
+
 
             if predIndex == 5:
                 return self.precpred(self._ctx, 4)
-         
+
 
             if predIndex == 6:
                 return self.precpred(self._ctx, 3)
-         
+
 
             if predIndex == 7:
                 return self.precpred(self._ctx, 2)
-         
+
 
             if predIndex == 8:
                 return self.precpred(self._ctx, 1)
-         
+
 
             if predIndex == 9:
                 return self.precpred(self._ctx, 13)
-         
+
 
             if predIndex == 10:
                 return self.precpred(self._ctx, 12)
-         
+
 
             if predIndex == 11:
-                return self.precpred(self._ctx, 6)
-         
+                return self.precpred(self._ctx, 8)
+
 
 
 

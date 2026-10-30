@@ -65,7 +65,6 @@ class CompiledQuery[T](BaseModel):
             "resource": resource,
             "rootResource": resource,
             "context": resource,
-            "ucum": "http://unitsofmeasure.org",
         }
         if context is not None:
             variables.update(context)
