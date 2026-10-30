@@ -165,3 +165,33 @@ def test_fractional_second_addition(amount: str, microseconds: int) -> None:
     expression = f"@1973-12-25T00:00:00.000+10:00 + {amount} 's'"
     expected = datetime(1973, 12, 25, microsecond=microseconds, tzinfo=timezone(timedelta(hours=10)))
     assert evaluate(None, expression) == [expected]
+
+
+@pytest.mark.parametrize("operator", ["=", "!=", "<", "<=", ">", ">="])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_mixed_timezone_comparison_is_indeterminate(operator: str, reverse: bool) -> None:
+    """No evaluation invents a timezone for a naive native or literal DateTime."""
+    aware = "@2012-04-15T15:00:00Z"
+    naive = "@2012-04-15T10:00:00"
+    left, right = (naive, aware) if reverse else (aware, naive)
+    assert evaluate(None, f"{left} {operator} {right}") == []
+    first = datetime.fromisoformat(left.removeprefix("@"))
+    second = datetime.fromisoformat(right.removeprefix("@"))
+    assert evaluate(first, f"$this {operator} %other", {"other": second}) == []
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("@2012-04-15T15:00:00Z ~ @2012-04-15T10:00:00", [False]),
+        ("@2012-04-15T15:00:00Z ~ @2012-04-15T15:00:00", [False]),
+        ("@2012-04-15T15:00:00Z = @2012-04-15T15:00:00", []),
+        ("@2012-04-15T15:00:00Z !~ @2012-04-15T10:00:00", [True]),
+        ("@2012-04-15T15:00:00Z = @2012-04-15T10:00:00-05:00", [True]),
+        ("@2012-04-15T15:00:00 = @2012-04-15T10:00:00", [False]),
+        ("@2012-04-15T15 = @2012-04-15T10Z", []),
+    ],
+)
+def test_timezone_comparison_policy(expression: str, expected: Collection) -> None:
+    """Known offsets normalize together; absent offsets retain wall-clock semantics."""
+    assert evaluate(None, expression) == expected

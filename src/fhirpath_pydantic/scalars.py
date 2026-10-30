@@ -149,6 +149,21 @@ class PrimitiveCollection(NativeCollection):
         except (InvalidOperation, ZeroDivisionError):  # fmt: skip
             return []
 
+    def joined(self, separator: list[Item] | None = None) -> list[Item]:
+        """Join present primitive strings without manufacturing a value for empty input."""
+        if not self.root or separator is not None and not separator:
+            return []
+        delimiter = string(separator) if separator is not None else ""
+        parts: list[str] = []
+        for item in self.root:
+            value = item.system_value()
+            if value is None:
+                continue
+            if not isinstance(value, str):
+                raise FHIRPathError("join() requires String values")
+            parts.append(value)
+        return items(delimiter.join(parts)) if parts else []
+
     def strings(self, name: str, params: list[list[Item]]) -> list[Item]:
         """Delegate checked singleton text transformations to the string owner."""
         focus = self.root

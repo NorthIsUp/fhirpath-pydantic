@@ -13,7 +13,7 @@ from fhirpath_pydantic.operators import OperatorCollection, binary, boolean, equ
 from fhirpath_pydantic.options import EvaluationOptions, TraceEvent
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.references import ResolutionScope
-from fhirpath_pydantic.scalars import convert, numeric, strings
+from fhirpath_pydantic.scalars import PrimitiveCollection, convert, numeric, strings
 from fhirpath_pydantic.syntax import Node
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.type_info import TypeInfo
@@ -242,6 +242,8 @@ class State(BaseModel):
                     frontier = children(frontier)
                 return result
             case "extension":
+                if not focus or not params[0]:
+                    return []
                 url = string(params[0])
                 return [item for item in member(focus, "extension") if values(member([item], "url")) == [url]]
             case "hasValue":
@@ -267,10 +269,7 @@ class State(BaseModel):
             case "timeOfDay":
                 return items(self.timestamp.time())
             case "join":
-                separator = string(params[0]) if params else ""
-                if any(not isinstance(item.value, str) for item in focus):
-                    raise FHIRPathError("join() requires String values")
-                return items(separator.join(item.value for item in focus if isinstance(item.value, str)))
+                return PrimitiveCollection.model_construct(root=focus).joined(params[0] if params else None)
             case _:
                 if name in {"toChars"}:
                     return strings(name, focus, params)

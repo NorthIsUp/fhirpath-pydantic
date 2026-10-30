@@ -68,7 +68,11 @@ from fhirpath_pydantic.types import Collection, NativeModel, Value
         ("'abc'.substring(1, -1)", [""]),
         ("'abc'.contains({})", []),
         ("('a' | 'b').join(',')", ["a,b"]),
-        ("{}.join()", [""]),
+        ("{}.join()", []),
+        ("{}.join(',')", []),
+        ("''.join()", [""]),
+        ("('' | 'a').join(',')", [",a"]),
+        ("'a'.join({})", []),
         ("coalesce({}, 1, %undefined)", [1]),
         ("coalesce({}, {})", []),
         ("iif(false, %undefined)", []),
@@ -293,3 +297,54 @@ def test_extension_only_scalar_operations(resource_type: type[Patient] | type[R4
     assert evaluate(patient, "name.given.exists()") == [True]
     assert evaluate(patient, "name.given.first().extension.value") == ["unknown"]
     assert evaluate(patient, expression) == []
+
+
+@pytest.mark.parametrize("resource_type", [Patient, R4BPatient])
+def test_join_skips_absent_primitive_values(resource_type: type[Patient] | type[R4BPatient]) -> None:
+    """Extension-only primitive slots remain navigable but supply no joined text."""
+    patient = resource_type.model_validate(
+        {
+            "name": [
+                {
+                    "given": ["a", None, "b"],
+                    "_given": [
+                        None,
+                        {"extension": [{"url": "http://example.org/absent", "valueCode": "unknown"}]},
+                        None,
+                    ],
+                }
+            ]
+        }
+    )
+    assert evaluate(patient, "name.given.join(',')") == ["a,b"]
+    assert evaluate(patient, "name.given[1].join(',')") == []
+    assert evaluate(patient, "name.given[1].extension.value") == ["unknown"]
+
+
+@pytest.mark.parametrize("resource_type", [Patient, R4BPatient])
+def test_native_nested_primitive_extensions(resource_type: type[Patient] | type[R4BPatient]) -> None:
+    """Nested native extensions retain choice values and ids through primitive companions."""
+    patient = resource_type.model_validate(
+        {
+            "active": True,
+            "_active": {
+                "id": "someid",
+                "extension": [
+                    {
+                        "url": "http://example.org/outer",
+                        "extension": [
+                            {"id": "someid2", "url": "http://example.org/inner", "valueUri": "http://example.org/value"}
+                        ],
+                    }
+                ],
+            },
+        }
+    )
+    assert evaluate(
+        patient, "active.extension('http://example.org/outer').extension('http://example.org/inner').value"
+    ) == ["http://example.org/value"]
+    assert evaluate(
+        patient, "active.extension('http://example.org/outer').extension('http://example.org/inner').id"
+    ) == ["someid2"]
+    assert evaluate(patient, "active.extension({})") == []
+    assert evaluate(patient, "name.extension({})") == []

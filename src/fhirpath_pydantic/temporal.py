@@ -223,6 +223,12 @@ class TemporalValue(BaseModel):
         """Compare common precision; equal prefixes of different lengths are unknown."""
         if (self.kind == "Time") != (other.kind == "Time"):
             raise FHIRPathError("Time and date values cannot be compared")
+        if (
+            self.hour is not None
+            and other.hour is not None
+            and (self.offset_minutes is None) != (other.offset_minutes is None)
+        ):
+            return None
         left, right = self.components(), other.components()
         for a, b in zip(left, right, strict=False):
             if a != b:
