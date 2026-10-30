@@ -6,8 +6,31 @@ retain their Python representations. Invalid FHIR input is rejected at the
 Pydantic boundary. JSON-shaped output and upstream implementation quirks are not
 the compatibility contract.
 
-The implementation is **not yet fully conformant**. The audits below report
-remaining failures rather than converting them into passes or disabled tests.
+The built-in native baseline is covered by the checks below. Full extension parity
+still needs deferred-expression arguments and variadic custom callbacks from the
+original invocation metadata contract. This is also **not full HL7 conformance**: the raw audits retain historical result differences, rejected
+inputs and optional newer features instead of converting them into passes or
+disabled tests.
+
+## Requested contract and current verification
+
+| Requirement | Authoritative checks |
+| --- | --- |
+| Native fhir.resources inputs and preserved identity | test_native.py, test_inputs.py and test_model_subclasses.py; serialization and iteration guards |
+| Built-in analogous 2.2.4 feature parity | Complete original corpus; all 87 callable names; all 24 operator entries; all original unit families/pairs; 75 rejected-fixture native equivalents |
+| Explicit compatibility decisions | Every remaining result/error difference re-executed with reviewed native expectations in test_reviewed_differences.py |
+| No missing baseline feature hidden as unsupported | Every official unsupported reason and its count checked against the actual pinned baseline registry by test_scope.py |
+| String-free native composition | All 22 binary operators plus native type tests run with the parser disabled in test_fluent_surface.py |
+| Idiomatic Pydantic boundaries and invariants | NativeInput/RootModel, cached TypeAdapters, model/field validators, FHIRPathConstraint, and constrained result-adapter tests |
+| Strict typing without escapes | mise run check: ty all=error, strict Pyright, banned Any/cast imports, disabled type-ignore handling and Ruff |
+| Behavior owned by types; no private module functions | test_architecture.py checks every handwritten runtime module |
+| Efficient native execution | Dump/iteration/revalidation guards, cached plans, isolated concurrent queries, and mise run benchmark measurements |
+| Usable typed distribution | mise run smoke imports the built wheel outside the checkout; checks py.typed, parser/interface files, native profiles and constraints; requires no legacy engine |
+
+These executable checks cover the built-in native contract; the remaining custom
+invocation capabilities are tracked in TODO.md. They do not promise
+all future FHIRPath additions, complete UCUM validation, or byte-compatible legacy
+objects and signatures.
 
 ## Implemented feature families
 
@@ -212,6 +235,34 @@ The historical corpus's `is(string)` assertions now pass, while its exact-type
 `as(string)`/`ofType(string)` expectations remain visible differences:
 [ofType includes subclasses](https://hl7.org/fhirpath/en/index.html#oftypetype--type-specifier--collection).
 
+## Unsupported official scope
+
+`test_scope.py` re-executes all official cases and requires the exact unsupported
+reason counts. The 333 function assertions call lowBoundary (114), highBoundary
+(99), sort (30), defineVariable (20), precision (16), matchesFull (15), unescape
+(12), escape (9), conformsTo (9), or comparable (9). Each name is checked against
+the actual pinned 2.2.4 registry and must be absent from it.
+
+The other 357 unsupported assertions use custom document mode (213), semantic
+checks (114), strict checks (18), HTML (4), CDA (3), terminology services (3), or
+lenient/polymorphic mode (2). These are optional evaluator configurations or
+services that the baseline does not expose. Each pinned suite explicitly labels
+the document functions as Java-reference extensions outside FHIRPath and FHIR's
+additional functions; the test checks those source declarations and their absence
+from the baseline registry. Generic custom functions and tracing remain supported
+through typed EvaluationOptions and have independent native callback tests.
+
+The raw audits continue to exit nonzero: analogous native parity is a different
+contract from passing every historical or optional HL7 assertion. The reviewed
+result differences, strict input boundaries, and explicit unsupported scope remain
+visible instead of being counted as conformance passes.
+
+The fluent surface exercises all 22 binary operators with the parser disabled.
+Together with is/as type tests, these account for every non-function entry in the
+pinned registry. Native is_type/as_type/of_type accept either an actual Pydantic
+class or a declared type name, preserve class identity even for same-named models,
+and retain empty-input/cardinality/type-resolution semantics without parsing text.
+
 ## Unit and execution boundaries
 
 Known units support mass, length, volume, calendar/definite time, products and
@@ -230,5 +281,16 @@ syntax, field metadata and validators; evaluation inputs remain call-local.
 `mise run check` enforces strict ty, strict Pyright, Ruff, architecture checks,
 lock freshness and the native regression suite. Generated ANTLR Python is the only
 runtime exclusion; its handwritten interfaces remain checked. `mise run build`
-produces the wheel and source distribution, and `mise run benchmark` measures the
+produces the wheel and source distribution. `mise run smoke` verifies the built
+wheel in an isolated subprocess, and `mise run benchmark` measures the
 native path against dump-plus-compiled-upstream without hardware-specific gates.
+
+A warmed synthetic traversal benchmark on the development host (Python 3.14.7)
+measured the following medians. These are observations, not performance gates or
+an across-the-board speedup claim; native execution also validates its typed result.
+
+| Patient names | Native query | Dump plus upstream query |
+| ---: | ---: | ---: |
+| 1 | 104.0 µs | 79.4 µs |
+| 100 | 3,542.0 µs | 3,408.7 µs |
+| 1,000 | 33,062.7 µs | 38,487.8 µs |

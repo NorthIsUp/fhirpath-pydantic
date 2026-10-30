@@ -40,6 +40,11 @@ runtime data. Neither constructs or interpolates FHIRPath text.
 `expression.binary(operator, other)` supports arithmetic, ordering, membership,
 set and Boolean operators. Its `BinaryOperator` argument is statically typed and
 validated with Pydantic; both operands remain native syntax nodes.
+`is_type()`, `as_type()` and `of_type()` accept an actual Pydantic class or a
+FHIR/System type name. For example, `path("gender").is_type("FHIR.string")` uses
+the declared primitive hierarchy, while `path().as_type(Patient)` checks the real
+model class and preserves the instance. Type names are syntax data and never
+interpolated into a query string.
 
 Evaluation reads Pydantic fields directly. FHIR aliases (`Encounter.class`), choice
 groups (`Observation.value`), and primitive extensions come from model metadata.
@@ -132,6 +137,7 @@ mise run check
 mise run benchmark
 mise run profile
 mise run build
+mise run smoke
 ```
 
 `hk check --all` enforces Ruff, formatting, strict Pyright, `ty` with every rule set
@@ -156,3 +162,9 @@ Regeneration requires Java on the mise environment PATH.
 `mise run parity:hl7` audits the complete pinned official R4/R4B/R5 XML corpora
 using native FHIR model parsing. It records every assertion, including unsupported
 configurations and rejected inputs, in `dist/hl7-report.json`.
+
+`mise run smoke` builds the wheel, checks its typed package and grammar files,
+and runs native queries and Pydantic constraints in a subprocess outside the
+checkout. The probe requires its imports to come from the wheel archive, preserves
+model identity and validator counts, and checks that the legacy engine is not
+loaded. CI runs this check after the full native test and typing gate.

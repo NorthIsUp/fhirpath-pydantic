@@ -151,15 +151,23 @@ class State(BaseModel):
             return []
         if name in {"ofType", "is", "as"}:
             target = args[0].name_value()
-            if name == "ofType" and (model := args[0].target_model) is not None:
-                return [item for item in focus if isinstance(item.value, model)]
-            TypeInfo.require_target(target, values(focus))
+            model = args[0].target_model
+            if model is None:
+                TypeInfo.require_target(target, values(focus))
             if name == "ofType":
-                return [item for item in focus if item.is_type(target, implicit=True)]
+                return (
+                    [item for item in focus if isinstance(item.value, model)]
+                    if model is not None
+                    else [item for item in focus if item.is_type(target, implicit=True)]
+                )
             if not focus:
                 return []
             one(focus)
-            matches = focus[0].is_type(target, implicit=name == "as")
+            matches = (
+                isinstance(focus[0].value, model)
+                if model is not None
+                else focus[0].is_type(target, implicit=name == "as")
+            )
             return items(matches) if name == "is" else focus if matches else []
         if name == "trace":
             label = string(self.evaluate(args[0], list(self.context_focus))) if args else ""

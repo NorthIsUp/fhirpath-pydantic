@@ -17,8 +17,8 @@ jobs:
         run: mise run sync
       - name: Check types, style and behavior
         run: mise run check
-      - name: Build distributions
-        run: mise run build
+      - name: Build and smoke-test distributions
+        run: mise run smoke
       - uses: actions/upload-artifact@v4
         with:
           name: distributions

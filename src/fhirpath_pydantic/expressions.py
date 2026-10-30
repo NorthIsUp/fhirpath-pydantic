@@ -59,6 +59,17 @@ class Expression(BaseModel):
         """Construct a runtime variable reference without parsing its name."""
         return cls(node=Node(kind="Variable", text=name))
 
+    @classmethod
+    def from_type(cls, target: str | type[BaseModel]) -> Expression:
+        """Keep a type name or actual Pydantic class as a native syntax argument."""
+        return cls(
+            node=Node(
+                kind="TypeSpecifier",
+                text=target if isinstance(target, str) else target.__name__,
+                target_model=None if isinstance(target, str) else target,
+            )
+        )
+
     def field(self, name: str) -> Expression:
         """Select a FHIR alias or choice field."""
         selection = Node(kind="MemberInvocation", children=(Node(kind="Identifier", text=name),))
@@ -84,9 +95,17 @@ class Expression(BaseModel):
         """Test whether this collection has an element."""
         return self.call("exists")
 
-    def of_type(self, model: type[BaseModel]) -> Expression:
-        """Filter to a native FHIR resource or datatype."""
-        return self.call("ofType", Expression(node=Node(kind="TypeSpecifier", text=model.__name__, target_model=model)))
+    def is_type(self, target: str | type[BaseModel]) -> Expression:
+        """Test a singleton's declared type or actual native model class."""
+        return self.call("is", Expression.from_type(target))
+
+    def as_type(self, target: str | type[BaseModel]) -> Expression:
+        """Keep a matching singleton without converting or serializing its value."""
+        return self.call("as", Expression.from_type(target))
+
+    def of_type(self, model: str | type[BaseModel]) -> Expression:
+        """Filter by declared FHIR/System type name or actual Pydantic class."""
+        return self.call("ofType", Expression.from_type(model))
 
     def binary(self, operator: BinaryOperator, other: Expression) -> Expression:
         """Compose a checked native operator without rendering either operand as text."""

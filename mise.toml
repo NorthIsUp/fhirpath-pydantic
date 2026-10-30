@@ -39,3 +39,8 @@ run = "uv run python tools/fetch_hl7.py"
 [tasks."parity:hl7"]
 description = "Audit every pinned official HL7 R4, R4B and R5 assertion against native resources"
 run = "uv run python tests/native/hl7_conformance.py"
+
+[tasks.smoke]
+description = "Build and verify the wheel with native queries outside the checkout"
+depends = ["build"]
+run = "uv run python tools/smoke_distribution.py"
