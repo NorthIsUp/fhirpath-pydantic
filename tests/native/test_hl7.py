@@ -85,3 +85,13 @@ def test_official_xml_uses_native_fhir_model() -> None:
     resource = HL7Input.from_path(path, "r5").value
     assert isinstance(resource, Patient)
     assert evaluate(resource, "name.given") == ["Peter", "James", "Jim", "Peter", "James"]
+
+
+def test_fractional_datetime_expected_value(tmp_path: Path) -> None:
+    """The audit compares the native DateTime without losing fractional seconds."""
+    case = HL7Case(
+        name="fractional-second",
+        expression="@1973-12-25T00:00:00.000+10:00 + 0.1 's'",
+        outputs=[HL7Output(type="dateTime", text="@1973-12-25T00:00:00.100+10:00")],
+    )
+    assert case.run(tmp_path, "r5") == ("passed", "Native result matches expectation")

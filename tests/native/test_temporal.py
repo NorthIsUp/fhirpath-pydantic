@@ -1,6 +1,6 @@
 """Precision-aware temporal behavior on native values and parsed literals."""
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -157,3 +157,11 @@ def test_datetime_literal_precision_holes_are_rejected(text: str) -> None:
     """Lexical date/time tokens must still satisfy Pydantic precision invariants."""
     with pytest.raises(ValueError):
         evaluate(None, f"@{text}")
+
+
+@pytest.mark.parametrize(("amount", "microseconds"), [("0.1", 100_000), ("0.01", 10_000), ("0.001", 1_000)])
+def test_fractional_second_addition(amount: str, microseconds: int) -> None:
+    """Second fractions survive addition to a native full-precision DateTime."""
+    expression = f"@1973-12-25T00:00:00.000+10:00 + {amount} 's'"
+    expected = datetime(1973, 12, 25, microsecond=microseconds, tzinfo=timezone(timedelta(hours=10)))
+    assert evaluate(None, expression) == [expected]

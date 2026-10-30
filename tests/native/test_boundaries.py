@@ -92,6 +92,7 @@ def test_scalar_boundaries(expression: str, expected: Collection) -> None:
     "expression",
     [
         "(1 | 2).not()",
+        "('item1' | 'item2').iif(true, 'yes', 'no')",
         "1 and (1 | 2)",
         "true < false",
         "'x' > 1",

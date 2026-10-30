@@ -107,6 +107,9 @@ class PrimitiveCollection(NativeCollection):
             return []
         if (native := one(focus)) is None:
             return []
+        if name == "abs" and QuantityValue.is_quantity(native):
+            quantity = QuantityValue.operand(native)
+            return items(quantity.absolute() if quantity is not None else None)
         value = number(native)
         try:
             match name:

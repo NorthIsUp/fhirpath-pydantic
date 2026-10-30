@@ -3,7 +3,7 @@
 import pytest
 from fhir.resources.patient import Patient
 
-from fhirpath_pydantic import evaluate
+from fhirpath_pydantic import FHIRPathError, compile, evaluate
 
 
 @pytest.mark.parametrize(
@@ -27,3 +27,19 @@ def test_escaped_function_and_type() -> None:
     assert evaluate(None, r"'Ada'.`\u006cength`()") == [3]
     assert evaluate(None, r"1 is `\u0053ystem`.`\u0049nteger`") == [True]
     assert evaluate(None, r"1.ofType(`\u0053ystem`.`\u0049nteger`)") == [1]
+
+
+@pytest.mark.parametrize("expression", [r"'\u+041'", r"'\u123'", r"%'\u+041'", r"1 '\u+041'"])
+def test_invalid_unicode_rejected_during_compilation(expression: str) -> None:
+    """Malformed Unicode escapes fail at the syntax boundary even in unevaluated branches."""
+    with pytest.raises(FHIRPathError, match="Unicode"):
+        compile(expression)
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [(r"'\\u+041'", r"\u+041"), (r"'\u0041'", "A"), (r"'\q'", "q")],
+)
+def test_literal_escape_decoding(expression: str, expected: str) -> None:
+    """Escaped backslashes are literal and unknown escapes retain their character."""
+    assert evaluate(None, expression) == [expected]

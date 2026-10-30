@@ -311,6 +311,10 @@ class QuantityValue(BaseModel):
         except DecimalException:
             return None
 
+    def absolute(self) -> Self:
+        """Absolute magnitude preserves the validated unit and exact Decimal digits."""
+        return self.model_copy(update={"value": self.value.copy_abs()})
+
     def negated(self) -> Self:
         """Unary negation retains the exact validated unit."""
         return self.model_copy(update={"value": -self.value})

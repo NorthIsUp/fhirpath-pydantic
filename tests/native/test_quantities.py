@@ -174,3 +174,20 @@ def test_quantity_equivalence_preserves_source_precision(expression: str, expect
     """Unit conversion shifts comparison precision without rounding actual values."""
     assert evaluate(None, expression) == expected
     assert evaluate(None, "(185 '[lb_av]').toQuantity('kg').value") == [Decimal("83.91458845")]
+
+
+@pytest.mark.parametrize("quantity_type", [Quantity, R4BQuantity])
+def test_native_quantity_absolute(quantity_type: type[Quantity] | type[R4BQuantity]) -> None:
+    """The numeric function maps UCUM-coded native quantities without altering the input."""
+    quantity = quantity_type.model_validate(
+        {"value": Decimal("-5.500"), "system": "http://unitsofmeasure.org", "code": "mg"}
+    )
+    assert evaluate(quantity, "abs()") == [QuantityValue(value=Decimal("5.500"), unit="mg")]
+    assert quantity.value == Decimal("-5.500")
+
+
+@pytest.mark.parametrize("value", ["-5.500", "0", "5.500", "-1234567890123456789012345678901234567890.123"])
+def test_system_quantity_absolute(value: str) -> None:
+    """Absolute values retain unit and exact Decimal digits beyond context precision."""
+    quantity = QuantityValue(value=Decimal(value), unit="mg")
+    assert evaluate(quantity, "abs()") == [QuantityValue(value=Decimal(value).copy_abs(), unit="mg")]

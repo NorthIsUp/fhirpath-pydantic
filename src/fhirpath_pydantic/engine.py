@@ -114,6 +114,7 @@ class State(BaseModel):
         if name in {"where", "select", "exists", "all", "repeat", "aggregate"}:
             return self.iterate(name, args, focus)
         if name == "iif":
+            one(focus)
             state = self.model_copy(update={"context_focus": tuple(focus)})
             condition = evaluate_node(args[0], focus, state)
             branch = args[1] if boolean(condition) is True else args[2] if len(args) == 3 else None

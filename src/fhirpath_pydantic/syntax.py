@@ -7,7 +7,7 @@ from typing import Literal, override
 from antlr4 import CommonTokenStream, InputStream, Lexer, Parser, ParserRuleContext, Token
 from antlr4.error.ErrorListener import ErrorListener
 from antlr4.tree.Tree import TerminalNode
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 from fhirpath_pydantic._grammar.FHIRPathLexer import FHIRPathLexer
 from fhirpath_pydantic._grammar.FHIRPathParser import FHIRPathParser
@@ -42,14 +42,35 @@ class Node(BaseModel):
             children=tuple(children),
         )
 
+    @field_validator("tokens")
+    @classmethod
+    def validate_quoted_tokens(cls, tokens: tuple[str, ...]) -> tuple[str, ...]:
+        """Reject invalid escapes in every quoted grammar token before evaluation."""
+        for token in tokens:
+            if token.startswith(("'", "`")):
+                cls.decode_quoted(token)
+        return tokens
+
+    @staticmethod
+    def escape_value(match: re.Match[str]) -> str:
+        """Decode one escape without accepting a malformed Unicode sequence."""
+        escape = match.group(1)
+        assert isinstance(escape, str)
+        if escape == "u":
+            raise FHIRPathError("Invalid Unicode escape: expected four hexadecimal digits")
+        if escape.startswith("u"):
+            return chr(int(escape[1:], 16))
+        escapes: dict[str, str] = {"n": "\n", "r": "\r", "t": "\t", "f": "\f", "\\": "\\", "'": "'", '"': '"', "`": "`"}
+        return escapes.get(escape, escape)
+
+    @classmethod
+    def decode_quoted(cls, text: str) -> str:
+        """Decode quoted text using FHIRPath's escape rules."""
+        return re.sub(r"\\(u[0-9A-Fa-f]{4}|.)", cls.escape_value, text[1:-1])
+
     def string_value(self) -> str:
-        """Decode a FHIRPath literal without Python-specific escape semantics."""
-        escapes = {"n": "\n", "r": "\r", "t": "\t", "f": "\f", "\\": "\\", "'": "'", '"': '"', "`": "`"}
-        return re.sub(
-            r"\\(u[0-9A-Fa-f]{4}|.)",
-            lambda match: chr(int(match[1][1:], 16)) if match[1].startswith("u") else escapes.get(match[1], match[1]),
-            self.text.removeprefix("%")[1:-1],
-        )
+        """Decode a literal or quoted environment variable name."""
+        return self.decode_quoted(self.text.removeprefix("%"))
 
     def name_value(self) -> str:
         """Decode names and qualified segments before runtime lookup."""
@@ -78,7 +99,10 @@ class Node(BaseModel):
         parser = FHIRPathParser(stream)
         parser.removeErrorListeners()
         parser.addErrorListener(errors)
-        result = cls.from_context(parser.expression())
+        try:
+            result = cls.from_context(parser.expression())
+        except ValidationError as error:
+            raise FHIRPathError(str(error)) from error
         if stream.LA(1) != Token.EOF:
             raise FHIRPathError("Unexpected trailing input")
         return result
