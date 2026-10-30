@@ -1,12 +1,14 @@
 """Precision-aware temporal values without inventing missing components."""
 
 import re
+from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
-from decimal import Decimal
+from decimal import ROUND_FLOOR, Decimal
 from typing import Literal, Self, override
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from fhirpath_pydantic.quantities import QuantityUnit, QuantityValue
 from fhirpath_pydantic.types import FHIRPathError, Value
 
 
@@ -140,6 +142,60 @@ class TemporalValue(BaseModel):
         ):
             return datetime(self.year, self.month, self.day, self.hour, self.minute, second, microsecond, tzinfo=zone)
         return self
+
+    def shifted(self, quantity: QuantityValue, *, subtract: bool = False) -> date | time | Self:
+        """Apply calendar arithmetic without adding precision to partial inputs."""
+        unit = {"s": "second", "ms": "millisecond"}.get(quantity.unit, quantity.unit)
+        if unit not in QuantityUnit.CALENDAR_TO_UCUM:
+            raise FHIRPathError("Temporal arithmetic requires a calendar duration or seconds/milliseconds")
+        if self.kind == "Time" and unit in {"year", "month", "week", "day"}:
+            raise FHIRPathError("Time arithmetic requires hours, minutes, seconds or milliseconds")
+        amount = -quantity.value if subtract else quantity.value
+        if unit not in {"second", "millisecond"}:
+            amount = Decimal(int(amount))
+        if unit == "week":
+            amount *= 7
+            unit = "day"
+        precisions = ("year", "month", "day", "hour", "minute", "second")
+        precision = precisions[(3 if self.kind == "Time" else 0) + len(self.components()) - 1]
+        source_scale = QuantityUnit.from_code(unit).factor
+        target_scale = QuantityUnit.from_code(precision).factor
+        if source_scale < target_scale:
+            amount = amount / 12 if precision == "year" and unit == "month" else amount * source_scale / target_scale
+            if precision != "second":
+                amount = Decimal(int(amount))
+            unit = precision
+        try:
+            anchor = datetime(self.year or 2000, self.month or 1, self.day or 1, self.hour or 0, self.minute or 0)
+            second = self.second
+            if unit in {"year", "month"}:
+                months = int(amount) * (12 if unit == "year" else 1)
+                year, month = divmod(anchor.year * 12 + anchor.month - 1 + months, 12)
+                if not 1 <= year <= 9999:
+                    raise FHIRPathError("Temporal arithmetic year is out of range")
+                month += 1
+                anchor = anchor.replace(year=year, month=month, day=min(anchor.day, monthrange(year, month)[1]))
+            else:
+                seconds = amount * QuantityUnit.from_code(unit).factor
+                if second is not None:
+                    total = second + seconds
+                    minutes = int((total / 60).to_integral_value(rounding=ROUND_FLOOR))
+                    second = total - minutes * 60
+                    anchor += timedelta(minutes=minutes)
+                else:
+                    anchor += timedelta(seconds=int(seconds))
+        except (ValueError, OverflowError) as error:
+            raise FHIRPathError("Temporal arithmetic is out of range") from error
+        return type(self)(
+            kind=self.kind,
+            year=anchor.year if self.year is not None else None,
+            month=anchor.month if self.month is not None else None,
+            day=anchor.day if self.day is not None else None,
+            hour=anchor.hour if self.hour is not None else None,
+            minute=anchor.minute if self.minute is not None else None,
+            second=second,
+            offset_minutes=self.offset_minutes,
+        ).native()
 
     def components(self) -> tuple[int | Decimal, ...]:
         """Normalize offsets at full precision, then retain only known components."""

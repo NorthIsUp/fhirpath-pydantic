@@ -97,3 +97,49 @@ def test_submicrosecond_precision_is_preserved() -> None:
     assert value.native() is value
     assert str(value) == "12:30:00.0000001"
     assert evaluate(None, "@T12:30:00.0000001 > @T12:30:00") == [True]
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("(@2016-02-29 + 1 year).toString()", ["2017-02-28"]),
+        ("(@2016-01-31 + 1 month).toString()", ["2016-02-29"]),
+        ("(@2016-01-31 - 1 month).toString()", ["2015-12-31"]),
+        ("(@2016-02-28 + 1.5 weeks).toString()", ["2016-03-06"]),
+        ("(@2016-02-28 + 1.5 day).toString()", ["2016-02-29"]),
+        ("(@2016 + 365 days).toString()", ["2017"]),
+        ("(@2016 + 364 days).toString()", ["2016"]),
+        ("(@2016 - 365 days).toString()", ["2015"]),
+        ("(@2016 + 23 months).toString()", ["2017"]),
+        ("(@2016-01 + 30 days).toString()", ["2016-02"]),
+        ("(@2018-02-18T12 + 59 minutes).toString()", ["2018-02-18T12"]),
+        ("(@2018-02-18T12 + 60 minutes).toString()", ["2018-02-18T13"]),
+        ("@T23:59:23 + 2 minutes = @T00:01:23", [True]),
+        ("@T23:59:23 - 1.5 's' = @T23:59:21.500", [True]),
+        ("@T23:59:23 + 5 milliseconds = @T23:59:23.005", [True]),
+        ("@T23:59:23 + 1.5 hours = @T00:59:23", [True]),
+        ("@T23:59:23.0000001 + 0.0000001 's' = @T23:59:23.0000002", [True]),
+    ],
+)
+def test_calendar_arithmetic(expression: str, expected: Collection) -> None:
+    """Calendar adjustment clamps dates, truncates coarse units and retains precision."""
+    assert evaluate(None, expression) == expected
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "@2018 + 1 'a'",
+        "@2018-02 + 1 'mo'",
+        "@2018-02-01 + 1 'd'",
+        "@T12 + 1 day",
+        "@T12 + 1 year",
+        "@2018-02-01 + 1 'kg'",
+        "@9999 + 1 year",
+        "@0001 - 1 year",
+    ],
+)
+def test_invalid_temporal_arithmetic(expression: str) -> None:
+    """Noncalendar coarse units, incompatible dimensions and overflow are errors."""
+    with pytest.raises(ValueError):
+        evaluate(None, expression)

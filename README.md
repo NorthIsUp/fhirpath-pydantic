@@ -70,15 +70,16 @@ scalar conversions, typed quantity literals/conversion/arithmetic, and
 precision-aware temporal literals and comparisons. Unsupported functions raise `UnsupportedFeatureError`; there is no serialization fallback.
 
 This is **not a drop-in implementation of every fhirpathpy feature**.
-Calendar temporal arithmetic and `type()` metadata remain
-unsupported. Primitive subtype
+`type()` metadata remains unsupported. Primitive subtype
 checks currently use Python representations, so distinct FHIR string-derived types
 are not distinguished. Raw dictionaries support ordinary fields; native choice
 resolution requires FHIR models. Use R4B or R5 models for clinical resources.
 
 Partial temporal results use the frozen `TemporalValue` Pydantic model; complete
 values retain Python temporal types. Missing precision produces an indeterminate
-comparison where required. `literal(TemporalValue(kind="DateTime", year=2018))`
+comparison where required. Calendar arithmetic clamps month-end dates, retains
+partial precision, and preserves fractional seconds. Definite UCUM durations above
+seconds are rejected in temporal arithmetic; use calendar units such as `day`. `literal(TemporalValue(kind="DateTime", year=2018))`
 works without query text; the inherited grammar currently rejects date-only
 DateTime literals with a trailing `T`.
 
