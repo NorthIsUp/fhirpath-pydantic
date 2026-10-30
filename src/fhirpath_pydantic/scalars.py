@@ -10,12 +10,15 @@ from pydantic import BaseModel
 from fhirpath_pydantic.native import Item, items, resource_type
 from fhirpath_pydantic.operators import integer, number, one, string
 from fhirpath_pydantic.quantities import QuantityValue
+from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.text import StringValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
 def is_type(value: Value, name: str) -> bool:
     """Test FHIR or System types using native Python and FHIR model types."""
+    if isinstance(value, TemporalValue):
+        return name.removeprefix("System.").removeprefix("FHIR.").casefold() == value.kind.casefold()
     if isinstance(value, QuantityValue):
         return name in {"Quantity", "System.Quantity"}
     if QuantityValue.is_quantity(value) and name == "System.Quantity":
@@ -55,7 +58,7 @@ def convert(name: str, focus: list[Item]) -> list[Item]:
         match target:
             case "String":
                 match value:
-                    case QuantityValue():
+                    case QuantityValue() | TemporalValue():
                         result = str(value)
                     case bool():
                         result = "true" if value else "false"
@@ -90,20 +93,28 @@ def convert(name: str, focus: list[Item]) -> list[Item]:
                         result = value.date()
                     case date():
                         result = value
-                    case str() if len(value) == 10:
-                        result = date.fromisoformat(value)
+                    case str():
+                        result = TemporalValue.from_text(value.split("T")[0], "Date").native()
+                    case TemporalValue() if value.kind != "Time":
+                        result = TemporalValue(kind="Date", year=value.year, month=value.month, day=value.day).native()
                     case _:
                         pass
             case "DateTime":
-                if isinstance(value, datetime):
+                if isinstance(value, datetime) or isinstance(value, TemporalValue) and value.kind == "DateTime":
                     result = value
                 elif isinstance(value, str):
-                    result = datetime.fromisoformat(value)
+                    result = TemporalValue.from_text(value, "DateTime").native()
+                elif isinstance(value, date) or isinstance(value, TemporalValue) and value.kind == "Date":
+                    temporal = TemporalValue.from_value(value)
+                    assert temporal is not None
+                    result = TemporalValue(
+                        kind="DateTime", year=temporal.year, month=temporal.month, day=temporal.day
+                    ).native()
             case "Time":
-                if isinstance(value, time):
+                if isinstance(value, time) or isinstance(value, TemporalValue) and value.kind == "Time":
                     result = value
                 elif isinstance(value, str):
-                    result = time.fromisoformat(value.removeprefix("T"))
+                    result = TemporalValue.from_text(value, "Time").native()
             case _:
                 raise UnsupportedFeatureError(f"Unsupported conversion: {name}")
     except (ValueError, InvalidOperation):  # fmt: skip

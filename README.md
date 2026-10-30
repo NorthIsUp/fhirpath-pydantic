@@ -67,14 +67,20 @@ Version 0.1 implements native navigation, aliases, choices, primitive extensions
 variables, indexing, filtering, projection, repetition, aggregation, collection
 operators, three-valued Boolean operators, numeric and string functions, native
 scalar conversions, typed quantity literals/conversion/arithmetic, and
-full-precision temporal literals. Unsupported functions raise `UnsupportedFeatureError`; there is no serialization fallback.
+precision-aware temporal literals and comparisons. Unsupported functions raise `UnsupportedFeatureError`; there is no serialization fallback.
 
 This is **not a drop-in implementation of every fhirpathpy feature**.
-Partial-precision temporal arithmetic/comparison and `type()` metadata remain
+Calendar temporal arithmetic and `type()` metadata remain
 unsupported. Primitive subtype
 checks currently use Python representations, so distinct FHIR string-derived types
 are not distinguished. Raw dictionaries support ordinary fields; native choice
 resolution requires FHIR models. Use R4B or R5 models for clinical resources.
+
+Partial temporal results use the frozen `TemporalValue` Pydantic model; complete
+values retain Python temporal types. Missing precision produces an indeterminate
+comparison where required. `literal(TemporalValue(kind="DateTime", year=2018))`
+works without query text; the inherited grammar currently rejects date-only
+DateTime literals with a trailing `T`.
 
 Quantity results use the frozen `QuantityValue` Pydantic model. Known conversions
 cover mass, length, volume, time and their products/quotients. Other UCUM codes

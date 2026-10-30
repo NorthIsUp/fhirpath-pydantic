@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, RootModel, TypeAdapter, ValidationError
 
 from fhirpath_pydantic import FHIRPathError, QuantityValue, UnsupportedFeatureError, evaluate
 from fhirpath_pydantic.operators import equal
+from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.types import Collection, Value
 
 _MAPPING = TypeAdapter[dict[str, Value]](dict[str, Value])
@@ -53,6 +54,11 @@ class ExpectedValue(RootModel[Value]):
     def matches(self, actual: Value) -> bool:
         """Adapt a declared expectation to the result's native model or scalar type."""
         expected = self.root
+        if isinstance(actual, TemporalValue) and isinstance(expected, str):
+            try:
+                return actual.equals(TemporalValue.from_text(expected, actual.kind)) is True
+            except ValueError:
+                return False
         if isinstance(actual, QuantityValue) and isinstance(expected, str):
             quantity = QuantityValue.from_text(expected)
             return quantity is not None and actual.equals(quantity) is True

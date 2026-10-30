@@ -106,7 +106,7 @@ def test_compatibility_helpers() -> None:
     assert compile_as_first("name", Patient, str)(resource) is None
 
 
-@pytest.mark.parametrize("expression", ["@2020", "$this.type()"])
+@pytest.mark.parametrize("expression", ["$this.type()"])
 def test_unsupported_features(expression: str) -> None:
     """Features outside the supported subset never silently coerce or serialize."""
     with pytest.raises(UnsupportedFeatureError):

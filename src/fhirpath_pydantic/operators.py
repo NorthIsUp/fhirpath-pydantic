@@ -7,6 +7,7 @@ from pydantic import ConfigDict, RootModel
 
 from fhirpath_pydantic.native import Item, items
 from fhirpath_pydantic.quantities import QuantityValue
+from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
@@ -54,6 +55,11 @@ def equal(left: Value, right: Value, *, equivalent: bool = False) -> bool | None
     if QuantityValue.is_quantity(left) or QuantityValue.is_quantity(right):
         a, b = QuantityValue.operand(left), QuantityValue.operand(right)
         return a.equals(b, equivalent=equivalent) if a is not None and b is not None else False
+    if (a_time := TemporalValue.from_value(left)) is not None:
+        b_time = TemporalValue.from_value(right)
+        return a_time.equals(b_time, equivalent=equivalent) if b_time is not None else False
+    if TemporalValue.from_value(right) is not None:
+        return False
     if equivalent and isinstance(left, str) and isinstance(right, str):
         return " ".join(left.split()).casefold() == " ".join(right.split()).casefold()
     if isinstance(left, bool):
@@ -83,6 +89,8 @@ class ScalarValue(RootModel[Value]):
         if QuantityValue.is_quantity(a) or QuantityValue.is_quantity(b):
             left, right = QuantityValue.operand(a), QuantityValue.operand(b)
             return left.compare(right) if left is not None and right is not None else None
+        if (a_time := TemporalValue.from_value(a)) is not None and (b_time := TemporalValue.from_value(b)) is not None:
+            return a_time.compare(b_time)
         match a, b:
             case (bool(), _) | (_, bool()):
                 raise FHIRPathError("Boolean values cannot be ordered")

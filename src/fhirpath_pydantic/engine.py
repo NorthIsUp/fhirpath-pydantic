@@ -1,6 +1,6 @@
 """Per-evaluation state and native FHIRPath syntax evaluation."""
 
-from datetime import UTC, date, datetime, time
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -13,6 +13,7 @@ from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.references import ResolutionScope
 from fhirpath_pydantic.scalars import convert, is_type, numeric, strings
 from fhirpath_pydantic.syntax import Node
+from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
@@ -276,14 +277,9 @@ class State(BaseModel):
             case "NullLiteral":
                 return []
             case "DateTimeLiteral":
-                value = node.text[1:]
-                if "T" in value:
-                    return items(datetime.fromisoformat(value))
-                if len(value) == 10:
-                    return items(date.fromisoformat(value))
-                raise UnsupportedFeatureError("Partial-precision temporal literals are not implemented")
+                return items(TemporalValue.from_text(node.text, "DateTime" if "T" in node.text else "Date").native())
             case "TimeLiteral":
-                return items(time.fromisoformat(node.text[2:]))
+                return items(TemporalValue.from_text(node.text, "Time").native())
             case "QuantityLiteral":
                 quantity = QuantityValue.from_text(node.text)
                 if quantity is None:
