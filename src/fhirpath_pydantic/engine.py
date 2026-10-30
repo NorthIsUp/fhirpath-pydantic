@@ -7,13 +7,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from fhirpath_pydantic.aggregates import AggregateCollection
 from fhirpath_pydantic.native import Item, children, items, member, values
-from fhirpath_pydantic.operators import binary, boolean, equal, integer, number, one, string, unique
+from fhirpath_pydantic.operators import OperatorCollection, binary, boolean, equal, integer, number, one, string, unique
 from fhirpath_pydantic.options import EvaluationOptions, TraceEvent
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.references import ResolutionScope
 from fhirpath_pydantic.scalars import convert, numeric, strings
 from fhirpath_pydantic.syntax import Node
 from fhirpath_pydantic.temporal import TemporalValue
+from fhirpath_pydantic.type_info import TypeInfo
 from fhirpath_pydantic.types import FHIRPathError, UnsupportedFeatureError, Value
 
 
@@ -127,6 +128,9 @@ class State(BaseModel):
             return []
         if name in {"ofType", "is", "as"}:
             target = args[0].name_value()
+            if name == "ofType" and (model := args[0].target_model) is not None:
+                return [item for item in focus if isinstance(item.value, model)]
+            TypeInfo.require_target(target, values(focus))
             if name == "ofType":
                 return [item for item in focus if item.is_type(target, implicit=True)]
             if not focus:
@@ -181,7 +185,7 @@ class State(BaseModel):
             case "distinct":
                 return unique(focus)
             case "isDistinct":
-                return items(len(unique(focus)) == len(focus))
+                return items(OperatorCollection(root=focus).is_distinct())
             case "allTrue" | "anyTrue" | "allFalse" | "anyFalse":
                 if any(not isinstance(item.value, bool) for item in focus):
                     raise FHIRPathError("Boolean aggregation requires Boolean values")
@@ -322,10 +326,12 @@ class State(BaseModel):
                 return self.invoke(node.text, node.children[1:], evaluate_node(node.children[0], focus, self))
             case "TypeExpression":
                 collection = evaluate_node(node.children[0], focus, self)
+                target = node.children[1].name_value()
+                TypeInfo.require_target(target, values(collection))
                 if not collection:
                     return []
                 one(collection)
-                matches = collection[0].is_type(node.children[1].name_value(), implicit=node.tokens[0] == "as")
+                matches = collection[0].is_type(target, implicit=node.tokens[0] == "as")
                 return items(matches) if node.tokens[0] == "is" else collection if matches else []
             case (
                 "UnionExpression"

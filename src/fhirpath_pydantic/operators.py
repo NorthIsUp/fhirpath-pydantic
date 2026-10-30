@@ -156,14 +156,30 @@ class ScalarValue(RootModel[Value]):
 class OperatorCollection(NativeCollection):
     """Collection equality, set membership and binary operations own their focus."""
 
-    def unique(self) -> list[Item]:
-        """Retain first occurrences using FHIRPath scalar equality."""
-        collection = self.root
+    def deduplicated(self) -> list[Item] | None:
+        """Retain first occurrences unless membership depends on unknown equality."""
         result: list[Item] = []
-        for item in collection:
-            if not any(equal(item.system_value(), previous.system_value()) for previous in result):
+        for item in self.root:
+            uncertain = False
+            for previous in result:
+                comparison = equal(item.system_value(), previous.system_value())
+                if comparison is True:
+                    break
+                uncertain = uncertain or comparison is None
+            else:
+                if uncertain:
+                    return None
                 result.append(item)
         return result
+
+    def unique(self) -> list[Item]:
+        """An indeterminate unique collection propagates as an empty FHIRPath result."""
+        return self.deduplicated() or []
+
+    def is_distinct(self) -> bool | None:
+        """Report distinctness only when equality resolved every membership decision."""
+        result = self.deduplicated()
+        return None if result is None else len(result) == len(self.root)
 
     def binary(self, operator: str, right: list[Item]) -> list[Item]:
         """Apply binary semantics to this collection and the right operand."""

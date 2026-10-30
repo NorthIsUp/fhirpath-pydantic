@@ -32,8 +32,8 @@ case in that family passes the official suites.
 
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Original fhirpathpy YAML | 1,545 | 1,382 | 18 | 0 | 75 | 70 |
-| Official HL7 R4/R4B/R5 XML | 3,613 | 2,789 | 99 | 690 | 35 | 0 |
+| Original fhirpathpy YAML | 1,545 | 1,381 | 19 | 0 | 75 | 70 |
+| Official HL7 R4/R4B/R5 XML | 3,613 | 2,794 | 94 | 690 | 35 | 0 |
 
 Run `mise run parity` and `mise run parity:hl7` to reproduce the complete JSON
 reports under `dist/`. Both commands currently exit nonzero. Error assertions
@@ -45,15 +45,25 @@ The original YAML corpus includes malformed synthetic FHIR resources and a
 fragment without required `linkId`; those reject during native validation.
 Some remaining YAML differences are intentional native behavior: declared FHIR
 primitive identity, full native timestamp precision, and calendar versus definite
-durations. The outstanding failures still require case-by-case review.
+durations. A legacy assertion also expects `System.Patient` to return false; the
+native evaluator rejects that unresolved type name (`FHIR.Patient` is valid).
+The outstanding failures still require case-by-case review.
 
 The newer official corpus also exercises features absent from the 2.2.4 baseline,
 including `lowBoundary`, `highBoundary`, `precision`, `sort`, `defineVariable`,
 `matchesFull`, `escape`, `unescape`, terminology/profile functions, and specialized
 static, document, HTML and CDA evaluation modes. These remain unsupported rather
-than silently emulated. The report also exposes ordinary function edge cases that
-still need correction, including indeterminate collection equality and invalid
-type-name handling. Escaped member/function/type/variable names and extension-only primitive scalar propagation
+than silently emulated. Unknown type names raise errors, including on empty
+inputs. Fluent `of_type()` filters retain the actual Pydantic class. Distinctness
+propagates indeterminate equality, such as comparing dates with different
+precision; it does not classify those items as definitely unique.
+
+The pinned R5 corpus expects last-occurrence ordering for several `distinct()`
+assertions. This evaluator retains first occurrences; the
+[normative specification](https://hl7.org/fhirpath/N1/index.html) does not guarantee
+an order. These differences remain visible in the report.
+
+Escaped member/function/type/variable names and extension-only primitive scalar propagation
 have native regression coverage in `test_syntax.py` and `test_boundaries.py`.
 Quantity `abs()`, native unit-text comparisons, conditional receiver cardinality
 and compile-time Unicode escape validation also have regression coverage.

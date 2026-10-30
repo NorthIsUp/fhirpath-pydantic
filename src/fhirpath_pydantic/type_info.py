@@ -2,16 +2,19 @@
 
 from datetime import date, datetime, time
 from decimal import Decimal
+from functools import lru_cache
 from typing import ClassVar, Self, get_args
 from uuid import UUID
 
+from fhir.resources import get_fhir_model_class as r5_model
+from fhir.resources.R4B import get_fhir_model_class as r4b_model
 from fhir_core.constraints import FHIR_PRIMITIVES_MAPS
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 from pydantic import BaseModel, ConfigDict
 
 from fhirpath_pydantic.quantities import QuantityValue
 from fhirpath_pydantic.temporal import TemporalValue
-from fhirpath_pydantic.types import Value
+from fhirpath_pydantic.types import Collection, FHIRPathError, Value
 
 
 class TypeInfo(BaseModel):
@@ -93,6 +96,52 @@ class TypeInfo(BaseModel):
             case _:
                 name = "Object"
         return cls(namespace="System", name=name)
+
+    @classmethod
+    @lru_cache(maxsize=512)
+    def declared_target(cls, target: str) -> bool:
+        """Resolve library-defined type names independently of the input values."""
+        namespace, separator, name = target.partition(".")
+        if not separator:
+            name, namespace = namespace, ""
+        if namespace in {"", "System"} and name.casefold() in {
+            name.casefold() for name in {*cls.PRIMITIVES.values(), "Date", "Quantity", "Object"}
+        }:
+            return True
+        if namespace not in {"", "FHIR"}:
+            return False
+        if name in {
+            *cls.PRIMITIVES,
+            "Base",
+            "Element",
+            "Resource",
+            "DomainResource",
+            "BackboneElement",
+            "BackboneType",
+        }:
+            return True
+        for factory in (r5_model, r4b_model):
+            try:
+                factory(name)
+            except ValueError:
+                continue
+            return True
+        return False
+
+    @classmethod
+    def require_target(cls, target: str, context: Collection) -> None:
+        """Reject unresolved types while allowing native Python model hierarchies."""
+        if cls.declared_target(target):
+            return
+        namespace, separator, name = target.partition(".")
+        if not separator:
+            name, namespace = namespace, ""
+        if namespace in {"", "Python"} and any(
+            isinstance(value, BaseModel) and any(base.__name__ == name for base in type(value).__mro__)
+            for value in context
+        ):
+            return
+        raise FHIRPathError(f"Unknown FHIRPath type: {target}")
 
     def matches(self, target: str, value: Value, *, implicit: bool = False) -> bool:
         """Filter types with optional System coercion; is() preserves FHIR identity."""

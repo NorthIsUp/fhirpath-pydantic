@@ -24,6 +24,7 @@ class Node(BaseModel):
     children: tuple[Node, ...] = ()
     value: Value = None
     source: Literal["grammar", "literal"] = "grammar"
+    target_model: type[BaseModel] | None = None
 
     @classmethod
     def from_context(cls, context: ParserRuleContext) -> Node:

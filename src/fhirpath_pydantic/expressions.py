@@ -57,7 +57,7 @@ class Expression(BaseModel):
 
     def of_type(self, model: type[BaseModel]) -> Expression:
         """Filter to a native FHIR resource or datatype."""
-        return self.call("ofType", Expression(node=Node(kind="TypeSpecifier", text=model.__name__)))
+        return self.call("ofType", Expression(node=Node(kind="TypeSpecifier", text=model.__name__, target_model=model)))
 
     def _binary(self, operator: str, other: Expression) -> Expression:
         return Expression(node=Node(kind="Binary", tokens=(operator,), children=(self.node, other.node)))

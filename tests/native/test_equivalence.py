@@ -66,3 +66,19 @@ class DumpGuard:
     def reject() -> Never:
         """Fail if comparison attempts to serialize a native model."""
         raise AssertionError("Native comparison must not dump models")
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("@2020.combine(@2020-01-01).distinct()", []),
+        ("@2020.combine(@2020-01-01).isDistinct()", []),
+        ("@2020.combine(@2021-01-01).isDistinct()", [True]),
+        ("@2020.combine(@2020).isDistinct()", [False]),
+        ("{}.isDistinct()", [True]),
+        ("'a'.combine('b').combine('a').distinct()", ["a", "b"]),
+    ],
+)
+def test_collection_distinctness_preserves_unknown_equality(expression: str, expected: Value) -> None:
+    """An uncertain equality cannot prove unique membership or distinctness."""
+    assert evaluate(None, expression) == expected

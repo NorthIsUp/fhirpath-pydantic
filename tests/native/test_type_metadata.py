@@ -4,8 +4,9 @@ import pytest
 from fhir.resources.observation import Observation
 from fhir.resources.patient import Patient
 from fhir.resources.R4B.patient import Patient as R4BPatient
+from pydantic import BaseModel
 
-from fhirpath_pydantic import evaluate
+from fhirpath_pydantic import FHIRPathError, evaluate, path
 from fhirpath_pydantic.types import Collection
 
 
@@ -35,7 +36,6 @@ from fhirpath_pydantic.types import Collection
         ("birthDate.is(FHIR.date)", [True]),
         ("Patient.type().namespace", ["FHIR"]),
         ("Patient.type().name", ["Patient"]),
-        ("Patient.is(System.Patient)", [False]),
         ("Patient.is(FHIR.Resource)", [True]),
         ("active.is(FHIR.Element)", [True]),
         ("active.hasValue()", [True]),
@@ -103,3 +103,48 @@ def test_primitive_id_comes_from_extension_companion() -> None:
     """Primitive metadata is accessible without serializing or replacing its value."""
     patient = Patient.model_validate({"active": True, "_active": {"id": "synthetic"}})
     assert evaluate(patient, "active.id") == ["synthetic"]
+
+
+@pytest.mark.parametrize("target", ["string1", "FHIR.string1", "System.Unknown", "Unknown.Patient", "System.Patient"])
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "1.is({target})",
+        "1.as({target})",
+        "1.ofType({target})",
+        "1 is {target}",
+        "1 as {target}",
+        "{{}}.ofType({target})",
+        "{{}} is {target}",
+    ],
+)
+def test_invalid_type_names_raise(target: str, expression: str) -> None:
+    """A misspelled type cannot masquerade as a valid type with no matches."""
+    with pytest.raises(FHIRPathError, match="type"):
+        evaluate(None, expression.format(target=target))
+
+
+@pytest.mark.parametrize("target", ["FHIR.Patient", "Patient", "FHIR.Resource", "System.Quantity"])
+def test_valid_absent_types_remain_empty(target: str) -> None:
+    """Valid declared types remain usable even when the input collection is empty."""
+    assert evaluate(None, f"{{}}.ofType({target})") == []
+    assert evaluate(None, f"1.ofType({target})") == []
+
+
+def test_fluent_python_model_type_is_retained() -> None:
+    """A typed fluent filter keeps the declared class even without a sample input."""
+
+    class Sample(BaseModel):
+        number: int
+
+    class OtherScope:
+        """A separate class may have the same unqualified name."""
+
+        class Sample(BaseModel):
+            number: int
+
+    sample = Sample(number=1)
+    query = path().of_type(Sample)
+    assert evaluate([], query) == []
+    assert evaluate(sample, query) == [sample]
+    assert evaluate(OtherScope.Sample(number=1), query) == []
