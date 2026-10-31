@@ -199,6 +199,11 @@ class State(BaseModel):
         match name:
             case "resolve":
                 return self.resolve(focus)
+            case "precision":
+                if not focus:
+                    return []
+                one(focus)
+                return items(focus[0].precision())
             case "sum" | "avg" | "min" | "max":
                 return AggregateCollection.model_construct(root=focus).aggregate(name).root
             case "toQuantity" | "convertsToQuantity":
@@ -279,6 +284,8 @@ class State(BaseModel):
                 )
             case "getValue":
                 value = one(focus)
+                if focus and (temporal := focus[0].temporal_value()) is not None:
+                    return [Item(value=value, temporal=temporal)]
                 return (
                     items(value)
                     if value is not None
@@ -335,9 +342,11 @@ class State(BaseModel):
             case "NullLiteral":
                 return []
             case "DateTimeLiteral":
-                return items(TemporalValue.from_text(node.text, "DateTime" if "T" in node.text else "Date").native())
+                return [
+                    Item.from_temporal(TemporalValue.from_text(node.text, "DateTime" if "T" in node.text else "Date"))
+                ]
             case "TimeLiteral":
-                return items(TemporalValue.from_text(node.text, "Time").native())
+                return [Item.from_temporal(TemporalValue.from_text(node.text, "Time"))]
             case "QuantityLiteral":
                 quantity = QuantityValue.from_text(node.text)
                 if quantity is None:
@@ -412,6 +421,7 @@ def evaluate_node(node: Node, focus: list[Item], state: State) -> list[Item]:
 
 _ARITY: dict[str, tuple[int, int | None]] = {
     "type": (0, 0),
+    "precision": (0, 0),
     "resolve": (0, 0),
     "trace": (0, 2),
     "sum": (0, 0),

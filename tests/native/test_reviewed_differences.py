@@ -193,4 +193,4 @@ def test_every_hl7_difference_has_a_native_expectation(monkeypatch: pytest.Monke
                 HL7_REVIEWS[case.expression].check_hl7(case, directory, release)
                 failures[case.expression] += 1
     assert failures == Counter({expression: review.occurrences for expression, review in HL7_REVIEWS.items()})
-    assert statuses == Counter(passed=2854, failed=34, unsupported=690, input_rejected=35)
+    assert statuses == Counter(passed=2870, failed=34, unsupported=674, input_rejected=35)

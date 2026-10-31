@@ -88,7 +88,7 @@ FHIR primitive value, so partial native dates cannot silently become strings.
 | Corpus | Assertions | Passed | Failed | Unsupported | Input rejected | Upstream disabled |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Original fhirpathpy YAML | 1,545 | 1,387 | 13 | 0 | 75 | 70 |
-| Official HL7 R4/R4B/R5 XML | 3,613 | 2,854 | 34 | 690 | 35 | 0 |
+| Official HL7 R4/R4B/R5 XML | 3,613 | 2,870 | 34 | 674 | 35 | 0 |
 
 Run `mise run parity` and `mise run parity:hl7` to reproduce the complete JSON
 reports under `dist/`. Both commands currently exit nonzero. Error assertions
@@ -134,7 +134,7 @@ Rejected native inputs and unsupported newer features remain separate audit
 categories; the review gate does not turn them into successful evaluations.
 
 The newer official corpus also exercises features absent from the 2.2.4 baseline,
-including `lowBoundary`, `highBoundary`, `precision`, `sort`, `defineVariable`,
+including `lowBoundary`, `highBoundary`, `sort`, `defineVariable`,
 `matchesFull`, `escape`, `unescape`, terminology/profile functions, and specialized
 static, document, HTML and CDA evaluation modes. These remain unsupported rather
 than silently emulated. Unknown type names raise errors, including on empty
@@ -237,8 +237,8 @@ The historical corpus's `is(string)` assertions now pass, while its exact-type
 ## Unsupported official scope
 
 `test_scope.py` re-executes all official cases and requires the exact unsupported
-reason counts. The 333 function assertions call lowBoundary (114), highBoundary
-(99), sort (30), defineVariable (20), precision (16), matchesFull (15), unescape
+reason counts. The 317 function assertions call lowBoundary (114), highBoundary
+(99), sort (30), defineVariable (20), matchesFull (15), unescape
 (12), escape (9), conformsTo (9), or comparable (9). Each name is checked against
 the actual pinned 2.2.4 registry and must be absent from it.
 
@@ -268,6 +268,25 @@ Together with is/as type tests, these account for every non-function entry in th
 pinned registry. Native is_type/as_type/of_type accept either an actual Pydantic
 class or a declared type name, preserve class identity even for same-named models,
 and retain empty-input/cardinality/type-resolution semantics without parsing text.
+
+## Precision queries
+
+`precision()` is supported beyond the original 2.2.4 function set. It counts
+Decimal fractional places, including trailing zeros, and declared temporal
+component digits. Empty or extension-only values return an empty collection;
+multiple values, unsupported types and extra arguments raise errors.
+
+Declared temporal precision stays in call-local metadata through conversion,
+getValue and arithmetic. Public complete results still use Python date/time
+objects. A fresh evaluation of a stdlib datetime or time observes its fixed six
+microsecond places, giving precision 20 or 12; the vendor's earlier parsing may
+already have discarded lexical precision. An explicit TemporalValue retains its
+declared precision. No serialized resource or global input cache supplies it.
+
+All 16 pinned official precision assertions now pass. Native regression coverage
+is in test_precision.py, including readonly input behavior, Decimal context
+independence and native FHIR fields. The behavior follows the
+[precision specification](https://hl7.org/fhirpath/en/index.html#precision--integer).
 
 ## Unit and execution boundaries
 

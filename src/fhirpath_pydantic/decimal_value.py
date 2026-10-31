@@ -12,6 +12,12 @@ class DecimalValue(RootModel[Decimal]):
 
     model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
+    def precision(self) -> int:
+        """Count represented fractional places, including significant trailing zeros."""
+        exponent = self.root.as_tuple().exponent
+        assert isinstance(exponent, int)
+        return max(0, -exponent)
+
     def arithmetic(self, operation: str, right: Decimal) -> Decimal:
         """Keep finite arithmetic exact and retain enough digits for division or remainders."""
         if not right.is_finite():

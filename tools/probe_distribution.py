@@ -1,5 +1,6 @@
 """Run only through the isolated built-wheel smoke task."""
 
+from decimal import Decimal
 from os import environ
 from pathlib import Path
 from sys import modules
@@ -75,6 +76,8 @@ def main() -> None:
     expression = path().call("firstPresent", literal([]), literal(patient), var("undefined"))
     assert evaluate(None, expression, options=options)[0] is patient
     assert ActivePatient.validations == before, "macro revalidated the resource"
+    assert evaluate(None, literal(Decimal("1.2300")).call("precision")) == [4]
+    assert evaluate(None, "@2014-01-05T10:30:00.000.precision()") == [17]
     assert not any(name == "fhirpathpy" or name.startswith("fhirpathpy.") for name in modules)
     print("Built wheel: native inputs, fluent/text queries, profile validators and constraints passed")
 

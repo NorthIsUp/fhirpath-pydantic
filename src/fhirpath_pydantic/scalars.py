@@ -72,34 +72,34 @@ class PrimitiveCollection(NativeCollection):
                         case date():
                             result = value
                         case str():
-                            result = TemporalValue.from_text(value.split("T")[0], "Date").native()
+                            result = TemporalValue.from_text(value.split("T")[0], "Date")
                         case TemporalValue() if value.kind != "Time":
-                            result = TemporalValue(
-                                kind="Date", year=value.year, month=value.month, day=value.day
-                            ).native()
+                            result = TemporalValue(kind="Date", year=value.year, month=value.month, day=value.day)
                         case _:
                             pass
                 case "DateTime":
                     if isinstance(value, datetime) or isinstance(value, TemporalValue) and value.kind == "DateTime":
-                        result = value
+                        result = focus[0].temporal_value()
                     elif isinstance(value, str):
-                        result = TemporalValue.from_text(value, "DateTime").native()
+                        result = TemporalValue.from_text(value, "DateTime")
                     elif isinstance(value, date) or isinstance(value, TemporalValue) and value.kind == "Date":
                         temporal = TemporalValue.from_value(value)
                         assert temporal is not None
                         result = TemporalValue(
                             kind="DateTime", year=temporal.year, month=temporal.month, day=temporal.day
-                        ).native()
+                        )
                 case "Time":
                     if isinstance(value, time) or isinstance(value, TemporalValue) and value.kind == "Time":
-                        result = value
+                        result = focus[0].temporal_value()
                     elif isinstance(value, str):
-                        result = TemporalValue.from_text(value, "Time").native()
+                        result = TemporalValue.from_text(value, "Time")
                 case _:
                     raise UnsupportedFeatureError(f"Unsupported conversion: {name}")
         except (ValueError, InvalidOperation):  # fmt: skip
             result = None
-        return items(result is not None) if name.startswith("convertsTo") else items(result)
+        if name.startswith("convertsTo"):
+            return items(result is not None)
+        return [Item.from_temporal(result)] if isinstance(result, TemporalValue) else items(result)
 
     def numeric(self, name: str, params: list[list[Item]]) -> list[Item]:
         """Apply numeric functions with Decimal precision and empty propagation."""

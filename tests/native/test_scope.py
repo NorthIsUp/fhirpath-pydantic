@@ -13,7 +13,6 @@ _APPROVED_UNSUPPORTED: dict[str, int] = {
     "Unsupported FHIRPath function: highBoundary": 99,
     "Unsupported FHIRPath function: sort": 30,
     "Unsupported FHIRPath function: defineVariable": 20,
-    "Unsupported FHIRPath function: precision": 16,
     "Unsupported FHIRPath function: matchesFull": 15,
     "Unsupported FHIRPath function: unescape": 12,
     "Unsupported FHIRPath function: escape": 9,

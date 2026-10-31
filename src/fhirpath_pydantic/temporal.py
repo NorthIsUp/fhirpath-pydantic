@@ -51,6 +51,13 @@ class TemporalValue(BaseModel):
             raise ValueError("A timezone offset requires a time")
         return self
 
+    def precision(self) -> int:
+        """Count declared component digits and fractional seconds without timezone normalization."""
+        digits = (4 if self.year is not None else 0) + 2 * sum(
+            value is not None for value in (self.month, self.day, self.hour, self.minute, self.second)
+        )
+        return digits + (DecimalValue.model_validate(self.second).precision() if self.second is not None else 0)
+
     @classmethod
     def from_text(cls, text: str, kind: Literal["Date", "DateTime", "Time"]) -> Self:
         """Parse partial ISO syntax while retaining its declared precision."""
@@ -160,6 +167,10 @@ class TemporalValue(BaseModel):
         return self
 
     def shifted(self, quantity: QuantityValue, *, subtract: bool = False) -> date | time | Self:
+        """Return a native calendar result when it can represent the shifted value losslessly."""
+        return self.shifted_value(quantity, subtract=subtract).native()
+
+    def shifted_value(self, quantity: QuantityValue, *, subtract: bool = False) -> Self:
         """Apply calendar arithmetic without adding precision to partial inputs."""
         unit = QuantityUnit.from_code(quantity.unit).arithmetic_unit()
         if unit is None:
@@ -220,7 +231,7 @@ class TemporalValue(BaseModel):
             minute=anchor.minute if self.minute is not None else None,
             second=second,
             offset_minutes=self.offset_minutes,
-        ).native()
+        )
 
     def components(self) -> tuple[int | Decimal, ...]:
         """Normalize offsets at full precision, then retain only known components."""

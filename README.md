@@ -214,3 +214,11 @@ without evaluating a path. Callback results are native values: model identity is
 preserved, and returned scalars have System types rather than inferred field
 provenance. Generic callback state belongs to the caller; compiled plans never
 cache a call's bound arguments or focus.
+
+## Numeric and temporal precision
+
+`precision()` reports Decimal fractional places and temporal component digits.
+Trailing zeros and partial date/time precision survive conversions and arithmetic
+within a query. Native datetime/time inputs expose six microsecond places;
+TemporalValue preserves explicitly declared precision. Complete results remain
+native Python values, so a subsequent query sees their native representation.

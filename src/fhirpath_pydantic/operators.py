@@ -239,11 +239,11 @@ class OperatorCollection(NativeCollection):
             )
         if operator == "+" and isinstance(a, str) and isinstance(b, str):
             return items(a + b)
-        if (temporal := TemporalValue.from_value(a)) is not None:
+        if (temporal := left[0].temporal_value()) is not None:
             quantity = QuantityValue.operand(b)
             if operator not in {"+", "-"} or quantity is None:
                 raise FHIRPathError("Temporal arithmetic requires addition/subtraction of a time quantity")
-            return items(temporal.shifted(quantity, subtract=operator == "-"))
+            return [Item.from_temporal(temporal.shifted_value(quantity, subtract=operator == "-"))]
         if QuantityValue.is_quantity(a) or QuantityValue.is_quantity(b):
             left_quantity, right_quantity = QuantityValue.operand(a), QuantityValue.operand(b)
             if left_quantity is None or right_quantity is None:

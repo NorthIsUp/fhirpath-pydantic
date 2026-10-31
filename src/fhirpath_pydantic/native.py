@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from datetime import date, datetime
+from decimal import Decimal
 from functools import cached_property, lru_cache
 from typing import Annotated, Self
 
@@ -10,6 +11,7 @@ from fhir.resources.resource import Resource as R5Resource
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
 
+from fhirpath_pydantic.decimal_value import DecimalValue
 from fhirpath_pydantic.temporal import TemporalValue
 from fhirpath_pydantic.type_info import TypeInfo
 from fhirpath_pydantic.types import Collection, FHIRPathError, InputValue, NativeModel, Value
@@ -40,6 +42,7 @@ class Item(BaseModel):
     extension: Value = None
     owner: ResourceModel | None = None
     declared_type: TypeInfo | None = None
+    temporal: Annotated[TemporalValue, NativeModel] | None = None
 
     @classmethod
     def singleton(cls, collection: list[Item]) -> Value:
@@ -71,21 +74,56 @@ class Item(BaseModel):
             raise FHIRPathError("Expected a String singleton")
         return value
 
-    def system_value(self) -> Value:
-        """Convert declared FHIR temporal primitives only at an operation boundary."""
+    def temporal_value(self) -> TemporalValue | None:
+        """Read retained syntax precision or the native field's declared temporal representation."""
+        if self.temporal is not None:
+            return self.temporal
         if self.declared_type is not None:
             match self.declared_type.name, self.value:
                 case (("date" | "dateTime" | "instant"), str()):
-                    return TemporalValue.from_text(self.value, "DateTime").native()
+                    return TemporalValue.from_text(self.value, "DateTime")
                 case "date", date() if not isinstance(self.value, datetime):
                     return TemporalValue(
                         kind="DateTime", year=self.value.year, month=self.value.month, day=self.value.day
                     )
                 case "time", str():
-                    return TemporalValue.from_text(self.value, "Time").native()
+                    return TemporalValue.from_text(self.value, "Time")
+                case _:
+                    pass
+        return TemporalValue.from_value(self.value)
+
+    def system_value(self) -> Value:
+        """Convert declared FHIR temporal primitives only at an operation boundary."""
+        if self.declared_type is not None:
+            match self.declared_type.name, self.value:
+                case (("date" | "dateTime" | "instant" | "time"), str()) | ("date", date()) if not isinstance(
+                    self.value, datetime
+                ):
+                    temporal = self.temporal_value()
+                    assert temporal is not None
+                    return temporal.native()
                 case _:
                     pass
         return self.value
+
+    def precision(self) -> int | None:
+        """Report represented numeric or temporal digits without inventing a missing value."""
+        if self.value is None:
+            return None
+        if (temporal := self.temporal_value()) is not None:
+            return temporal.precision()
+        match self.value:
+            case int() if not isinstance(self.value, bool):
+                return 0
+            case Decimal() | float():
+                return DecimalValue.model_validate(self.value).precision()
+            case _:
+                raise FHIRPathError("precision() requires a Decimal, Date, DateTime or Time")
+
+    @classmethod
+    def from_temporal(cls, temporal: TemporalValue) -> Self:
+        """Keep declared precision internally while exposing the corresponding native value."""
+        return cls(value=temporal.native(), temporal=temporal)
 
     def type_info(self) -> TypeInfo:
         """Return declared FHIR identity before inferring the native representation."""
