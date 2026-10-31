@@ -1,41 +1,56 @@
+"""Typed historical regression cases for the pinned fhirpathpy baseline."""
+
 from typing import Literal
 
 import pydantic
 import pytest
-
 from fhirpathpy import compile_as_array, compile_as_first
 
 
 class CustomModel:
+    """Non-Pydantic input rejected by the historical helper boundary."""
+
     pass
 
 
 class HumanName(pydantic.BaseModel):
+    """Minimal HumanName shape for typed helper regression cases."""
+
     given: list[str]
     family: str
 
 
 class ContactPoint(pydantic.BaseModel):
+    """Minimal ContactPoint shape for typed helper regression cases."""
+
     system: Literal["phone", "email", "fax", "pager", "url", "sms", "other"]
     value: str
     use: Literal["home", "work", "temp", "old", "mobile"]
 
 
 class Patient(pydantic.BaseModel):
+    """Minimal Patient shape for typed helper regression cases."""
+
     resourceType: Literal["Patient"] = "Patient"  # noqa: N815
     name: list[HumanName]
     telecom: list[ContactPoint]
 
 
 class Observation(pydantic.BaseModel):
+    """Minimal Observation shape for typed helper regression cases."""
+
     resourceType: Literal["Observation"] = "Observation"  # noqa: N815
 
 
 class BundleEntry(pydantic.BaseModel):
+    """Minimal BundleEntry shape for typed helper regression cases."""
+
     resource: Patient | Observation
 
 
 class Bundle(pydantic.BaseModel):
+    """Minimal Bundle shape for typed helper regression cases."""
+
     resourceType: Literal["Bundle"] = "Bundle"  # noqa: N815
     type: Literal["searchset"]
     entry: list[BundleEntry]
@@ -52,7 +67,7 @@ PATIENT_DATA = {
         {"system": "phone", "value": "555-555-2001", "use": "home"},
     ],
 }
-PATIENT_RESOURCE = Patient(**PATIENT_DATA)
+PATIENT_RESOURCE = Patient.model_validate(PATIENT_DATA)
 BUNDLE_RESOURCE = Bundle(type="searchset", entry=[BundleEntry(resource=PATIENT_RESOURCE)])
 
 EXPRESSION = "Patient.name.given"
@@ -73,7 +88,10 @@ EXPRESSION = "Patient.name.given"
         ),
     ],
 )
-def compile_as_first_test(resource, path, input_type, output_type, expected):
+def compile_as_first_test[I, O](
+    resource: I, path: str, input_type: type[I], output_type: type[O], expected: O | None
+) -> None:
+    """The typed helper returns the first result or None."""
     wrapper_fn = compile_as_first(path, input_type, output_type)
     result = wrapper_fn(resource)
     assert isinstance(result, output_type) or result is None
@@ -94,7 +112,10 @@ def compile_as_first_test(resource, path, input_type, output_type, expected):
         ),
     ],
 )
-def compile_as_array_test(resource, path, input_type, output_type, expected):
+def compile_as_array_test[I, O](
+    resource: I, path: str, input_type: type[I], output_type: type[O], expected: list[O]
+) -> None:
+    """The typed helper returns every result with the declared output type."""
     wrapper_fn = compile_as_array(path, input_type, output_type)
     result = wrapper_fn(resource)
     assert isinstance(result, list)
@@ -129,7 +150,10 @@ def compile_as_array_test(resource, path, input_type, output_type, expected):
         ),
     ],
 )
-def exception_compile_as_first_test(resource, path, input_type, output_type, expected):
+def exception_compile_as_first_test[I, O](
+    resource: I, path: str, input_type: type[I], output_type: type[O], expected: str
+) -> None:
+    """The first-result helper rejects invalid input and output types."""
     wrapper_fn = compile_as_first(path, input_type, output_type)
     with pytest.raises(Exception) as exc:
         wrapper_fn(resource)
@@ -148,7 +172,10 @@ def exception_compile_as_first_test(resource, path, input_type, output_type, exp
         ),
     ],
 )
-def exception_compile_as_array_test(resource, path, input_type, output_type, expected):
+def exception_compile_as_array_test[I, O](
+    resource: I, path: str, input_type: type[I], output_type: type[O], expected: str
+) -> None:
+    """The array helper rejects a mismatched resource type."""
     wrapper_fn = compile_as_array(path, input_type, output_type)
     with pytest.raises(Exception) as exc:
         wrapper_fn(resource)

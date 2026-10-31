@@ -1,9 +1,12 @@
+"""Typed historical regression cases for the pinned fhirpathpy baseline."""
+
 from decimal import Decimal
 
 from fhirpathpy import evaluate as fhirpath
 
 
-def use_decimal_in_context_test():
+def use_decimal_in_context_test() -> None:
+    """Context variables preserve Decimal values in nested answers."""
     assert fhirpath(
         {},
         "%QuestionnaireResponse.repeat(item).where(linkId='blood-pressure-systolic').answer.valueQuantity",

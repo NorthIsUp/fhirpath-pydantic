@@ -1,10 +1,21 @@
-import pickle
-import pytest
+"""Typed historical regression cases for the pinned fhirpathpy baseline."""
 
+import pickle
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+import pytest
 from fhirpathpy import compile, evaluate
 
-def find_concept_test():
-    env = {}
+from fhirpath_pydantic.types import Collection, InputValue, Value
+from tests.test_evaluators import Powers
+
+if TYPE_CHECKING:
+    from fhirpathpy import UserInvocation
+
+
+def find_concept_test() -> None:
+    """ValueSet membership compares each coding against the selected code."""
+    env: dict[str, InputValue] = {}
     env["Source"] = {
         "resourceType": "Bundle",
         "id": -1,
@@ -73,7 +84,8 @@ def find_concept_test():
     ) == [False]
 
 
-def aidbox_polimorphici_test():
+def aidbox_polimorphici_test() -> None:
+    """The legacy JSON engine traverses vendor-shaped polymorphic fields."""
     qr = {
         "resourceType": "QuestionnaireResponse",
         "item": {"linkId": "foo", "answer": {"value": {"Coding": {"code": 1}}}},
@@ -81,7 +93,8 @@ def aidbox_polimorphici_test():
     assert evaluate(qr, "QuestionnaireResponse.item.answer.value.Coding") == [{"code": 1}]
 
 
-def pickle_test():
+def pickle_test() -> None:
+    """A trusted local pickle restores the legacy compiled callable."""
     resource = {
         "resourceType": "DiagnosticReport",
         "id": "abc",
@@ -90,12 +103,14 @@ def pickle_test():
     path = compile(path="DiagnosticReport.subject.reference")
 
     dumped = pickle.dumps(path)
-    reload = pickle.loads(dumped)
+    reload: object = pickle.loads(dumped)
+    assert isinstance(reload, CompiledBaseline)
 
     assert reload(resource) == ["Patient/cdf"]
 
 
-def extension_test():
+def extension_test() -> None:
+    """Extension predicates select the matching patient identifier."""
     patient = {
         "identifier": [
             {
@@ -132,7 +147,8 @@ def extension_test():
     assert result == ["7SM0A00AA00"]
 
 
-def reference_filter_test():
+def reference_filter_test() -> None:
+    """Reference predicates keep practitioners and exclude practitioner roles."""
     encounter = {
         "meta": {
             "lastUpdated": "2023-08-03T16:24:50.634670Z",
@@ -177,10 +193,11 @@ def reference_filter_test():
     assert result == ["Practitioner/dr-johns"]
 
 
-def compile_with_user_defined_table_test():
-    user_invocation_table = {
+def compile_with_user_defined_table_test() -> None:
+    """Compiled queries retain their registered custom functions."""
+    user_invocation_table: dict[str, UserInvocation] = {
         "pow": {
-            "fn": lambda inputs, exp=2: [i**exp for i in inputs],
+            "fn": Powers().power,
             "arity": {0: [], 1: ["Integer"]},
         }
     }
@@ -192,28 +209,35 @@ def compile_with_user_defined_table_test():
     assert expr({"a": [5, 6, 7]}) == [5 * 5, 6 * 6, 7 * 7]
 
 
-def age_comparation_test():
+def age_comparation_test() -> None:
+    """Calendar month arithmetic compares a birth date against the current date."""
     assert evaluate(
         {"resourceType": "Patient", "birthDate": "2024-08-01"},
         "Patient.birthDate + 12 month <= now()",
     ) == [True]
 
+
 @pytest.mark.parametrize(
     ("effective", "result"),
-    [
-        (None, []),
-        ({}, []),
-        ("2020", ["2020"]),
-        ("2020-01-01", ["2020-01-01"])
-    ],
+    [(None, []), ({}, []), ("2020", ["2020"]), ("2020-01-01", ["2020-01-01"])],
 )
-def emty_substring_test(effective, result):
-    if(isinstance(effective, str)):
+def emty_substring_test(effective: dict[str, Value] | str | None, result: list[str]) -> None:
+    """Substring conversion propagates missing and partial effective dates."""
+    if isinstance(effective, str):
         effective = {"effective": effective}
     r = evaluate(effective, "effective.toString().substring(0,10).toDate()")
     if len(r) > 0:
         assert len(r) == len(result)
-        for index,item in enumerate(r):
+        for index, item in enumerate(r):
             assert str(item) == result[index]
     else:
         assert r == result
+
+
+@runtime_checkable
+class CompiledBaseline(Protocol):
+    """The callable surface restored by the historical trusted-pickle regression."""
+
+    def __call__(self, resource: InputValue) -> Collection:
+        """Evaluate a previously compiled baseline expression."""
+        ...

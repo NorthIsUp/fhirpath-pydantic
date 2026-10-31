@@ -124,10 +124,20 @@ identity and performs no implicit network access. An unconfigured `trace()` keep
 its input and produces no console output. FHIR model subclasses with their own
 Pydantic validators retain their logical resource type.
 
-The original `fhirpathpy/` source and original tests remain in this fork for
-provenance. They are not shipped in the new wheel or included in its strict type
-checks. Only the generated ANTLR implementation is excluded from type/lint checks
-within `src`; its handwritten interface stubs are checked.
+The original `fhirpathpy/` source remains as the comparison baseline and is not
+shipped in the new wheel or checked as handwritten native code. The retained
+Python regression tests have typed signatures, run with `mise run test:baseline`,
+and are checked alongside every test by hk. The native fixture runner owns YAML
+conformance coverage; the former root-level YAML collector is removed.
+
+CI runs Ruff (including all annotation rules), ty (`all = "error"`) and Pyright
+(`typeCheckingMode = "strict"`) through hk. All handwritten source, tests, tools
+and dependency stubs are in scope. Only generated ANTLR implementation files are
+excluded from native source checking; their adjacent interfaces are checked.
+`typings/` supplies narrow interfaces for the untyped ANTLR runtime and legacy
+comparison APIs. It supplies no Python-version compatibility shims or native
+package annotations; the native package carries its own annotations and
+`py.typed`.
 
 ## Development
 

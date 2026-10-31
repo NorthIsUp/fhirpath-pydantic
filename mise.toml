@@ -8,7 +8,7 @@ run = "uv run pytest --confcutdir=tests/native"
 [tasks.lint]
 run = "hk check --all"
 [tasks.check]
-depends = ["test", "lint"]
+depends = ["test", "test:baseline", "lint"]
 [tasks.build]
 run = "uv build"
 [tasks.benchmark]
@@ -44,3 +44,7 @@ run = "uv run python tests/native/hl7_conformance.py"
 description = "Build and verify the wheel with native queries outside the checkout"
 depends = ["build"]
 run = "uv run python tools/smoke_distribution.py"
+
+[tasks."test:baseline"]
+description = "Run the retained Python regression tests against the pinned legacy engine"
+run = "uv run pytest --confcutdir=tests -o 'python_functions=*_test' tests/test_*.py"

@@ -1,0 +1,3 @@
+from fhirpath_pydantic.types import Value
+
+def parse(expression: str) -> dict[str, Value]: ...

@@ -15,7 +15,7 @@ jobs:
         run: uv python install 3.14
       - name: Install development dependencies
         run: mise run sync
-      - name: Check types, style and behavior
+      - name: Check strict ty, Pyright and Ruff through hk, plus both test suites
         run: mise run check
       - name: Build and smoke-test distributions
         run: mise run smoke

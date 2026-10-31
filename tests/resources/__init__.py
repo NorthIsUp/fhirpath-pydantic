@@ -1,16 +1,11 @@
-import json
-import os
-import pathlib
+"""Validate the inherited JSON fixture catalogue before exposing its values."""
 
-current_dir = pathlib.Path(__file__).parent.resolve()
+from pathlib import Path
 
-resources = {}
+from pydantic import TypeAdapter
 
+from fhirpath_pydantic.types import Value
 
-files = [f for f in os.listdir(current_dir)]
-for f in files:
-    fp = os.path.join(current_dir, f)
-    print(fp)
-    if os.path.isfile(fp) and f.endswith(".json"):
-        with open(fp) as fd:
-            resources[f] = json.loads(fd.read())
+resources: dict[str, Value] = {
+    path.name: TypeAdapter(Value).validate_json(path.read_bytes()) for path in Path(__file__).parent.glob("*.json")
+}

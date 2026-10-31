@@ -1,7 +1,8 @@
+"""Typed historical regression cases for the pinned fhirpathpy baseline."""
+
 from decimal import Decimal
 
 import pytest
-
 from fhirpathpy.engine.invocations.equality import (
     decimal_places,
     is_equivalent,
@@ -20,7 +21,8 @@ from fhirpathpy.engine.invocations.equality import (
         ("", ""),
     ],
 )
-def normalize_string_test(s, expected):
+def normalize_string_test(s: str, expected: str) -> None:
+    """String equivalence folds case and whitespace."""
     assert normalize_string(s) == expected
 
 
@@ -36,7 +38,8 @@ def normalize_string_test(s, expected):
         (0.01, 2),
     ],
 )
-def decimal_places_test(a, expected):
+def decimal_places_test(a: float, expected: int) -> None:
+    """Fractional place counting removes insignificant trailing zeros."""
     assert decimal_places(a) == expected
 
 
@@ -51,7 +54,8 @@ def decimal_places_test(a, expected):
         (0.00012345, 4, Decimal("0.0001")),
     ],
 )
-def round_to_decimal_places_test(a, n, expected):
+def round_to_decimal_places_test(a: float, n: int, expected: Decimal) -> None:
+    """Decimal rounding retains the requested number of places."""
     assert round_to_decimal_places(a, n) == expected
 
 
@@ -70,5 +74,6 @@ def round_to_decimal_places_test(a, n, expected):
         (0.123, 0.123456, True),
     ],
 )
-def is_equivalent_test(a, b, expected):
+def is_equivalent_test(a: float, b: float, expected: bool) -> None:
+    """Numeric equivalence compares values at their shared precision."""
     assert is_equivalent(a, b) == expected

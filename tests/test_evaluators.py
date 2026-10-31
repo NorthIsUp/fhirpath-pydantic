@@ -1,13 +1,21 @@
+"""Typed historical regression cases for the pinned fhirpathpy baseline."""
+
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, fields
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING, override
 from unittest import mock
 
 import pytest
-
 from fhirpathpy import evaluate
+from pydantic import BaseModel
+
+from fhirpath_pydantic.types import Collection, InputValue, Value
+
+if TYPE_CHECKING:
+    from fhirpathpy import UserInvocation
 
 
 @pytest.mark.parametrize(
@@ -21,7 +29,8 @@ from fhirpathpy import evaluate
         ({"a": 42}, "a div 2", [21]),
     ],
 )
-def infix_math_functions_test(resource, path, expected):
+def infix_math_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Arithmetic operators return the baseline numeric values."""
     assert evaluate(resource, path) == expected
 
 
@@ -46,7 +55,8 @@ def infix_math_functions_test(resource, path, expected):
         ({"a": False, "b": False}, "a implies b", [True]),
     ],
 )
-def simple_logic_expressions_test(resource, path, expected):
+def simple_logic_expressions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Boolean operators implement their declared truth tables."""
     assert evaluate(resource, path) == expected
 
 
@@ -72,7 +82,8 @@ def simple_logic_expressions_test(resource, path, expected):
         ),
     ],
 )
-def math_functions_test(resource, path, expected):
+def math_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Numeric functions preserve rounding and Decimal results."""
     assert evaluate(resource, path) == expected
 
 
@@ -91,7 +102,8 @@ def math_functions_test(resource, path, expected):
         ({"a": "lorem ipsum"}, "a.length()", [11]),
     ],
 )
-def string_functions_test(resource, path, expected):
+def string_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """String functions preserve indexing, replacements and predicates."""
     assert evaluate(resource, path) == expected
 
 
@@ -117,7 +129,8 @@ def string_functions_test(resource, path, expected):
         # ({"list": [{"a": 1}, {"a": 2}, {"a": 3}, {"a": 4}]}, "list.select(a)", [1, 2, 3, 4]),
     ],
 )
-def filtering_functions_test(resource, path, expected):
+def filtering_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Collection filters preserve selected values and their order."""
     assert evaluate(resource, path) == expected
 
 
@@ -129,7 +142,8 @@ def filtering_functions_test(resource, path, expected):
         ({}, "(1 | 2 | 3).intersect(2 | 4)", [2]),
     ],
 )
-def subsetting_functions_test(resource, path, expected):
+def subsetting_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Intersection retains only values present in both collections."""
     assert evaluate(resource, path) == expected
 
 
@@ -150,7 +164,8 @@ def subsetting_functions_test(resource, path, expected):
         ({"a": 42}, "a !~ 42", [False]),
     ],
 )
-def equality_functions_test(resource, path, expected):
+def equality_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Equality and ordering compare integer and decimal values."""
     assert evaluate(resource, path) == expected
 
 
@@ -185,7 +200,8 @@ def equality_functions_test(resource, path, expected):
         ({"a": [False, False]}, "a.anyFalse()", [True]),
     ],
 )
-def existence_functions_test(resource, path, expected):
+def existence_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Existence and Boolean aggregates honor empty and populated collections."""
     assert evaluate(resource, path) == expected
 
 
@@ -202,7 +218,8 @@ def existence_functions_test(resource, path, expected):
         ({"a": 101.99}, "a.toString()", ["101.99"]),
     ],
 )
-def misc_functions_test(resource, path, expected):
+def misc_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Conditionals, tracing and primitive conversions preserve their results."""
     assert evaluate(resource, path) == expected
 
 
@@ -222,19 +239,19 @@ def misc_functions_test(resource, path, expected):
         ("today() + 1 day", '["2020-08-21"]'),
     ],
 )
-def datetime_json_serialization_test(expression: str, expected_json: str):
+def datetime_json_serialization_test(expression: str, expected_json: str) -> None:
+    """Temporal results retain the legacy JSON serialization format."""
     with mock.patch("fhirpathpy.engine.invocations.datetime.systemtime") as datetime_mock:
-        datetime_mock.now.return_value = datetime(
-            2020, 8, 20, 17, 52, 15, 123000, tzinfo=timezone.utc
-        )
+        datetime_mock.now.return_value = datetime(2020, 8, 20, 17, 52, 15, 123000, tzinfo=UTC)
         assert json.dumps(evaluate({}, expression)) == expected_json
 
 
-def now_function_test():
+def now_function_test() -> None:
+    """Separate queries obtain separate clock readings."""
     with mock.patch("fhirpathpy.engine.invocations.datetime.systemtime") as datetime_mock:
         datetime_mock.now.side_effect = [
-            datetime(2020, 8, 20, 17, 52, 15, 123000, tzinfo=timezone.utc),
-            datetime(2020, 8, 20, 17, 52, 16, 123000, tzinfo=timezone.utc),
+            datetime(2020, 8, 20, 17, 52, 15, 123000, tzinfo=UTC),
+            datetime(2020, 8, 20, 17, 52, 16, 123000, tzinfo=UTC),
         ]
         old_now_value = evaluate({}, "now()")
         new_now_value = evaluate({}, "now()")
@@ -255,7 +272,8 @@ def now_function_test():
         ),
     ],
 )
-def combining_functions_test(resource, path, expected):
+def combining_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Union and combine preserve the legacy mixed scalar results."""
     assert evaluate(resource, path) == expected
 
 
@@ -272,46 +290,75 @@ def combining_functions_test(resource, path, expected):
         ),
     ],
 )
-def path_functions_test(resource, path, expected):
+def path_functions_test(resource: dict[str, Value], path: str, expected: Collection) -> None:
+    """Traversal retains the declared results and cardinality."""
     assert evaluate(resource, path) == expected
 
 
-@dataclass(eq=True)
-class NestedMapping(Mapping):
+@dataclass(eq=True)  # The baseline test specifically exercises dataclass Mapping inputs.
+class NestedMapping(Mapping[str, InputValue]):
+    """Read-only scalar fields used to exercise the baseline mapping interface."""
+
     d: int
     e: str
 
-    def __iter__(self):
+    @override
+    def __iter__(self) -> Iterator[str]:
+        """Iterate the declared field names."""
         return iter([field.name for field in fields(self)])
 
-    def __getitem__(self, key: str):
-        try:
-            return getattr(self, key)
-        except AttributeError as exc:
-            raise KeyError(key) from exc
+    @override
+    def __getitem__(self, key: str) -> InputValue:
+        """Read a declared field or reject an unknown key."""
+        match key:
+            case "d":
+                return self.d
+            case "e":
+                return self.e
+            case _:
+                raise KeyError(key)
 
-    def __len__(self):
+    @override
+    def __len__(self) -> int:
+        """Count the declared mapping fields."""
         return len(fields(self))
 
 
-@dataclass(eq=True)
-class CustomMapping(Mapping):
+@dataclass(eq=True)  # The baseline test specifically exercises dataclass Mapping inputs.
+class CustomMapping(Mapping[str, InputValue]):
+    """Nested mappings remain traversable without converting the caller object."""
+
     a: int
-    b: dict
+    b: dict[str, bool]
     c: NestedMapping
     d: tuple[NestedMapping, ...]
     e: list[NestedMapping]
 
-    def __iter__(self):
+    @override
+    def __iter__(self) -> Iterator[str]:
+        """Iterate the declared field names."""
         return iter([field.name for field in fields(self)])
 
-    def __getitem__(self, key: str):
-        try:
-            return getattr(self, key)
-        except AttributeError as exc:
-            raise KeyError(key) from exc
+    @override
+    def __getitem__(self, key: str) -> InputValue:
+        """Read a declared field or reject an unknown key."""
+        match key:
+            case "a":
+                return self.a
+            case "b":
+                return self.b
+            case "c":
+                return self.c
+            case "d":
+                return self.d
+            case "e":
+                return self.e
+            case _:
+                raise KeyError(key)
 
-    def __len__(self):
+    @override
+    def __len__(self) -> int:
+        """Count the declared mapping fields."""
         return len(fields(self))
 
 
@@ -386,27 +433,31 @@ class CustomMapping(Mapping):
         ),
     ],
 )
-def mappings_test(resource, path, expected):
+def mappings_test(resource: CustomMapping, path: str, expected: Collection) -> None:
+    """Custom mappings support native field and collection traversal."""
     assert evaluate(resource, path) == expected
 
 
-def external_constant_test():
+def external_constant_test() -> None:
+    """A caller variable is available as an external constant."""
     assert evaluate({}, "%var", {"var": "value"}) == ["value"]
 
 
-def external_constant_fails_on_undefined_var_test():
+def external_constant_fails_on_undefined_var_test() -> None:
+    """An undefined external constant raises an error."""
     with pytest.raises(ValueError):
         evaluate({}, "%var")
 
 
-def user_invocation_table_test():
-    user_invocation_table = {
+def user_invocation_table_test() -> None:
+    """Custom callbacks honor default and explicit integer arguments."""
+    user_invocation_table: dict[str, UserInvocation] = {
         "pow": {
-            "fn": lambda inputs, exp=2: [i**exp for i in inputs],
+            "fn": Powers().power,
             "arity": {0: [], 1: ["Integer"]},
         },
         "pow3": {
-            "fn": lambda inputs: [i**3 for i in inputs],
+            "fn": Powers().cube,
             "arity": {0: [], 1: ["Integer"]},
         },
     }
@@ -431,3 +482,15 @@ def user_invocation_table_test():
         options={"userInvocationTable": user_invocation_table},
     )
     assert result == [5 * 5 * 5, 6 * 6 * 6, 7 * 7 * 7]
+
+
+class Powers(BaseModel):
+    """Typed callbacks for the legacy custom-function boundary."""
+
+    def power(self, inputs: list[int], exp: int = 2) -> list[int]:
+        """Raise each input integer to the selected exponent."""
+        return [i**exp for i in inputs]
+
+    def cube(self, inputs: list[int]) -> list[int]:
+        """Cube each input integer."""
+        return self.power(inputs, 3)
